@@ -1,0 +1,28 @@
+{
+    "app": {
+        "name": "EduBridge",
+        "tagline": "One trusted place for every school message"
+    },
+    "nav": {
+        "notices": "Notices",
+        "calendar": "Calendar",
+        "messages": "Messages",
+        "myChild": "My Child"
+    },
+    "home": {
+        "welcome": "Welcome",
+        "subtitle": "School notices, calendar, and messages — all in one app.",
+        "urgent": "Urgent",
+        "upcoming": "Tomorrow",
+        "newNotices": "new notices",
+        "repliesWaiting": "reply waiting",
+        "language": "Language",
+        "switchToEnglish": "English",
+        "switchToMalayalam": "Malayalam",
+        "offlineReady": "Ready to read offline",
+        "pwaHint": "You can install this app on your phone"
+    },
+    "common": {
+        "loading": "Loading..."
+    }
+}
