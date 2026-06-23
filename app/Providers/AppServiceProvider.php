@@ -2,21 +2,28 @@
 
 namespace App\Providers;
 
+use App\Services\Sms\LogSmsDriver;
+use App\Services\Sms\SmsService;
+use App\Services\WhatsApp\LogWhatsAppDriver;
+use App\Services\WhatsApp\WhatsAppDriver;
+use App\Services\WhatsApp\WhatsAppService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        $this->app->bind(WhatsAppDriver::class, LogWhatsAppDriver::class);
+
+        $this->app->singleton(WhatsAppService::class, function ($app) {
+            return new WhatsAppService($app->make(WhatsAppDriver::class));
+        });
+
+        $this->app->singleton(SmsService::class, function ($app) {
+            return new SmsService($app->make(LogSmsDriver::class));
+        });
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         //

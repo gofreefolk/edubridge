@@ -1,82 +1,47 @@
 # EduBridge
 
-Official, structured school communication for Kerala schools — a mobile-first PWA with Malayalam-first UI.
-
-> One trusted place for every school message — simple enough for grandparents, official enough for SMC.
+Official school communication PWA for Kerala schools — notices, calendar, feedback, SMC coordination, and more.
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| Backend | Laravel 13 |
-| Frontend | Vue 3 + Vite |
-| PWA | vite-plugin-pwa (offline shell + service worker) |
-| i18n | vue-i18n (Malayalam default) + Laravel JSON locales |
-| Styling | Tailwind CSS |
-
-## Requirements
-
-- PHP 8.3+
-- Composer
-- Node.js 18+
-- MySQL (production) or SQLite (local default)
+- Laravel 13 + Vue 3 PWA (Vite, Tailwind, vue-i18n)
+- Phone OTP authentication (no passwords)
+- WhatsApp bridge for urgent notice alerts (log driver in development)
 
 ## Quick start
 
 ```bash
-# Install PHP dependencies
 composer install
-
-# Copy environment and generate key (if needed)
 cp .env.example .env
 php artisan key:generate
-
-# Run migrations
-php artisan migrate
-
-# Install frontend dependencies and build
+php artisan migrate --seed
 npm install
-npm run dev
-```
-
-In another terminal:
-
-```bash
+npm run build
 php artisan serve
 ```
 
-Open [http://localhost:8000](http://localhost:8000). The home screen loads in **Malayalam** by default; tap the language button to switch to English.
+## Pilot school (seeded)
 
-For full local development (server, queue, logs, Vite):
+| Role | Phone |
+|------|-------|
+| School Admin | 9876543210 |
+| Parent | 9123456789 |
+| Teacher | 9876501234 |
+| Alumni | 9988776655 |
 
-```bash
-composer dev
-```
+**Demo magic link notice:** `/n/demo123abc`
 
-## Project structure
+## Features
 
-```
-app/                    Laravel backend
-resources/js/
-  components/           Shared Vue components
-  i18n/locales/         Frontend translations (ml, en)
-  pages/                Route-level Vue pages
-  router/               Vue Router
-lang/                   Laravel JSON translations (ml, en)
-routes/web.php          SPA catch-all → app.blade.php
-```
+- **MVP:** Notices, calendar, feedback, SMC board, WhatsApp urgent alerts
+- **Year 1:** Student portal (homework, attendance, timetable), teacher workspace
+- **Year 1–2:** Online examinations with auto-grading
+- **Year 2:** School transport (routes, trips, boarding logs)
+- **Year 2+:** Alumni portal (events, jobs, mentorship, donations)
 
-## i18n
+## API
 
-- **Default locale:** Malayalam (`ml`)
-- **Fallback:** English (`en`)
-- Frontend strings: `resources/js/i18n/locales/{ml,en}.json`
-- Backend strings: `lang/{ml,en}.json`
-- User preference is persisted in `localStorage` (`edubridge.locale`)
-
-## PWA
-
-The app registers a service worker via `vite-plugin-pwa` for installability and offline caching of static assets. Run `npm run build` for production PWA output in `public/build`.
+All routes under `/api` — session auth via OTP login.
 
 ## License
 

@@ -4,10 +4,52 @@
         "tagline": "One trusted place for every school message"
     },
     "nav": {
+        "home": "Home",
         "notices": "Notices",
         "calendar": "Calendar",
         "messages": "Messages",
-        "myChild": "My Child"
+        "myChild": "My Child",
+        "smc": "SMC",
+        "class": "My Class",
+        "homework": "Homework",
+        "exams": "Exams",
+        "alumni": "Alumni",
+        "driver": "Bus"
+    },
+    "roles": {
+        "parent": "Parent",
+        "grandparent": "Grandparent",
+        "school_admin": "School Admin",
+        "teacher": "Teacher",
+        "student": "Student",
+        "smc_member": "SMC Member",
+        "alumni": "Alumni",
+        "transport_staff": "Driver",
+        "super_admin": "Platform Admin"
+    },
+    "auth": {
+        "loginTitle": "Sign in with phone",
+        "loginShort": "Sign in",
+        "loginSubtitle": "Enter your mobile number. We will send a one-time code — no password needed.",
+        "phoneLabel": "Mobile number",
+        "phonePlaceholder": "9876543210",
+        "sendCode": "Send code",
+        "codeSentTo": "Code sent to",
+        "codeLabel": "Enter 6-digit code",
+        "codePlaceholder": "000000",
+        "verifyCode": "Verify and sign in",
+        "resendCode": "Resend code",
+        "resendIn": "Resend in {seconds}s",
+        "changePhone": "Use a different number",
+        "logout": "Sign out",
+        "genericError": "Something went wrong. Please try again."
+    },
+    "notice": {
+        "notFoundTitle": "Notice not found",
+        "goHome": "Go to home",
+        "loginHint": "Sign in with your parent phone number to read this notice.",
+        "demoLink": "Open sample notice (parent login required)",
+        "openNotice": "Read notice"
     },
     "home": {
         "welcome": "Welcome",
@@ -20,9 +62,97 @@
         "switchToEnglish": "English",
         "switchToMalayalam": "Malayalam",
         "offlineReady": "Ready to read offline",
-        "pwaHint": "You can install this app on your phone"
+        "pwaHint": "You can install this app on your phone",
+        "signedInAs": "Signed in as {name}"
     },
     "common": {
         "loading": "Loading..."
+    },
+    "messages": {
+        "new": "New message",
+        "subject": "Subject",
+        "body": "Your message",
+        "send": "Send"
+    },
+    "myChild": {
+        "noChild": "No child linked to your account yet.",
+        "homework": "Homework",
+        "due": "Due",
+        "attendance": "Recent attendance",
+        "smcBoard": "View SMC board"
+    },
+    "smc": {
+        "title": "SMC Board",
+        "members": "Members",
+        "meetings": "Meetings",
+        "development": "Development plan",
+        "viewBoard": "View SMC board"
+    },
+    "alumni": {
+        "title": "Alumni Portal",
+        "events": "Upcoming events",
+        "jobs": "Job board",
+        "viewPortal": "Open alumni portal"
+    },
+    "transport": {
+        "title": "School Transport",
+        "stop": "Your stop",
+        "noRoute": "No bus route assigned yet."
+    },
+    "admin": {
+        "homeTitle": "School Dashboard",
+        "publishHint": "Create a notice, then share the parent link via WhatsApp. Only parents of this school can open the link after signing in.",
+        "importTitle": "Import parents & students",
+        "importSubtitle": "Upload a CSV to create classes, students, and parent accounts. Parents log in with their phone number.",
+        "importShort": "Import",
+        "downloadSample": "Download sample CSV",
+        "csvColumns": "Required columns",
+        "selectCsv": "Choose CSV file",
+        "uploadCsv": "Upload and import",
+        "lineError": "Line {line}: {message}",
+        "createNoticeTitle": "New school notice",
+        "createNoticeSubtitle": "Parents of this school will see it after you publish and share the link.",
+        "createNoticeShort": "New notice",
+        "noticeTitleMl": "Title (Malayalam)",
+        "noticeBodyMl": "Message (Malayalam)",
+        "noticeTitleEn": "Title (English, optional)",
+        "noticeBodyEn": "Message (English, optional)",
+        "noticePriority": "Priority",
+        "priorityNormal": "Normal",
+        "priorityUrgent": "Urgent (WhatsApp alert)",
+        "noticeAudience": "Who should see this?",
+        "audienceWholeSchool": "Whole school",
+        "audienceClass": "One class",
+        "audienceSection": "One section",
+        "selectClass": "Class",
+        "chooseClass": "Select class",
+        "selectSection": "Section",
+        "chooseSection": "Select section",
+        "pinDays": "Pin on home (days)",
+        "pinDaysOptional": "Optional",
+        "publishNotice": "Publish notice",
+        "noticePublished": "Notice published",
+        "shareLinkHint": "Share this link with parents. They must sign in with their registered phone number.",
+        "copyLink": "Copy parent link",
+        "linkCopied": "Copied",
+        "backToNotices": "Back to notices",
+        "draft": "Draft",
+        "noNotices": "No notices yet.",
+        "parentLink": "Parent link"
+    },
+    "teacher": {
+        "homeTitle": "Teacher Workspace",
+        "noClass": "No class assigned yet."
+    },
+    "student": {
+        "viewExams": "View upcoming exams",
+        "noExams": "No exams scheduled."
+    },
+    "driver": {
+        "homeTitle": "Driver Console",
+        "startTrip": "Start today's trip",
+        "tripActive": "Trip in progress",
+        "noRoutes": "No routes assigned.",
+        "stops": "stops"
     }
 }

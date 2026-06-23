@@ -1,0 +1,6 @@
+student_name,admission_number,class,section,parent_name,parent_phone,relationship
+Anu,STMS-2025-042,3,B,Anu's Mother,9123456789,mother
+Ravi Kumar,STMS-2025-043,3,B,Ravi's Father,9876512345,father
+Meera,STMS-2025-044,4,A,Meera's Guardian,9876523456,guardian
+Arjun,STMS-2025-045,4,A,Arjun's Grandmother,9876534567,grandparent
+Devan,STMS-2025-046,5,B,Devan's Mother,9876545678,mother
