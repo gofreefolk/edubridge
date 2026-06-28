@@ -34,11 +34,12 @@
                 <div class="flex items-center justify-between gap-4 px-4 py-3 lg:px-8">
                     <div class="min-w-0">
                         <p class="text-xs font-semibold uppercase tracking-wider text-blue-700 lg:hidden">
-                            EduBridge Platform
+                            {{ t('platform.brandTitle') }}
                         </p>
                         <h1 class="truncate text-lg font-bold text-slate-900">{{ pageTitle }}</h1>
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
+                        <LanguageSwitcher />
                         <router-link
                             :to="{ name: 'home' }"
                             class="hidden rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
@@ -83,6 +84,7 @@
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 import { useAuth } from '@/composables/useAuth';
 
 const { t } = useI18n();

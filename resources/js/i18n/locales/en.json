@@ -156,6 +156,7 @@
         "stops": "stops"
     },
     "platform": {
+        "brandTitle": "EduBridge Platform",
         "console": "Platform Console",
         "loginTitle": "Platform sign in",
         "loginSubtitle": "For EduBridge platform administrators only.",

@@ -18,6 +18,7 @@ import PlatformDashboardPage from '@/pages/platform/PlatformDashboardPage.vue';
 import PlatformSchoolsPage from '@/pages/platform/PlatformSchoolsPage.vue';
 import { useAuth } from '@/composables/useAuth';
 import { useRole } from '@/composables/useRole';
+import { applyUserLocale, setLocale } from '@/i18n';
 
 const routes = [
     { path: '/', name: 'home', component: RoleHomePage },
@@ -72,6 +73,14 @@ router.beforeEach(async (to) => {
     }
 
     syncActiveRole();
+
+    if (to.meta.platformLayout || to.name === 'platform-login') {
+        if (isAuthenticated.value && isSuperAdmin(user.value)) {
+            applyUserLocale(user.value);
+        } else if (!localStorage.getItem('edubridge.locale')) {
+            setLocale('en');
+        }
+    }
 
     if (to.name === 'platform-login' && isAuthenticated.value && isSuperAdmin(user.value)) {
         return { name: 'platform-dashboard' };

@@ -28,10 +28,14 @@
             </div>
         </section>
 
-        <section class="flex w-full flex-col justify-center bg-white px-6 py-10 sm:px-10 lg:w-1/2 lg:px-16">
+        <section class="relative flex w-full flex-col justify-center bg-white px-6 py-10 sm:px-10 lg:w-1/2 lg:px-16">
+            <div class="mb-6 flex justify-end lg:absolute lg:right-8 lg:top-8">
+                <LanguageSwitcher />
+            </div>
+
             <div class="mx-auto w-full max-w-md">
                 <div class="mb-8 lg:hidden">
-                    <p class="text-sm font-semibold uppercase tracking-wider text-blue-700">EduBridge Platform</p>
+                    <p class="text-sm font-semibold uppercase tracking-wider text-blue-700">{{ t('platform.brandTitle') }}</p>
                     <h1 class="mt-2 text-2xl font-bold text-slate-900">{{ t('platform.loginTitle') }}</h1>
                 </div>
 
@@ -124,10 +128,12 @@
 </template>
 
 <script setup>
-import { onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 import { useAuth } from '@/composables/useAuth';
+import { setLocale } from '@/i18n';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -179,6 +185,12 @@ function goBackToPhone() {
     code.value = '';
     error.value = '';
 }
+
+onMounted(() => {
+    if (!localStorage.getItem('edubridge.locale')) {
+        setLocale('en');
+    }
+});
 
 onUnmounted(() => {
     error.value = '';

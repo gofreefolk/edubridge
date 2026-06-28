@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import axios from 'axios';
+import { applyUserLocale } from '@/i18n';
 
 const user = ref(null);
 const loading = ref(false);
@@ -12,6 +13,7 @@ export function useAuth() {
         try {
             const { data } = await axios.get('/api/auth/me');
             user.value = data.user;
+            applyUserLocale(data.user);
         } catch {
             user.value = null;
         } finally {
@@ -33,6 +35,7 @@ export function useAuth() {
         try {
             const { data } = await axios.post('/api/auth/otp/verify', { phone, code });
             user.value = data.user;
+            applyUserLocale(data.user);
             return data.user;
         } finally {
             loading.value = false;
