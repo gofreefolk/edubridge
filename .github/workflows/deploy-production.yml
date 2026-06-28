@@ -72,54 +72,20 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, edubridge]
     environment: production
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: release
+          path: .
 
-      - name: Show runner public IP
-        run: curl -s https://api.ipify.org
-
-      - name: Upload release to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.PRODUCTION_PORT }}
-          source: release.tar.gz
-          target: ${{ secrets.PRODUCTION_PATH }}
-
-      - name: Extract and activate release
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.PRODUCTION_PORT }}
-          script: |
-            set -euo pipefail
-            APP_DIR="${{ secrets.PRODUCTION_PATH }}"
-            RELEASES_DIR="$APP_DIR/releases"
-            SHARED_DIR="$APP_DIR/shared"
-            RELEASE_ID="${{ github.sha }}"
-            RELEASE_DIR="$RELEASES_DIR/$RELEASE_ID"
-
-            mkdir -p "$RELEASES_DIR" "$SHARED_DIR/storage/app/public" "$SHARED_DIR/storage/logs"
-            mkdir -p "$SHARED_DIR/storage/framework/cache" "$SHARED_DIR/storage/framework/sessions" "$SHARED_DIR/storage/framework/views"
-
-            mkdir -p "$RELEASE_DIR"
-            tar -xzf "$APP_DIR/release.tar.gz" -C "$RELEASE_DIR"
-            rm -f "$APP_DIR/release.tar.gz"
-
-            ln -sfn "$SHARED_DIR/.env" "$RELEASE_DIR/.env"
-            ln -sfn "$SHARED_DIR/storage" "$RELEASE_DIR/storage"
-
-            ln -sfn "$RELEASE_DIR" "$APP_DIR/current"
-            cd "$APP_DIR/current"
-            bash scripts/deploy-post.sh "$APP_DIR/current"
-
-            ls -1dt "$RELEASES_DIR"/* | tail -n +6 | xargs -r rm -rf
+      - name: Activate release
+        env:
+          APP_DIR: ${{ secrets.PRODUCTION_PATH }}
+          RELEASE_ID: ${{ github.sha }}
+          RELEASE_ARCHIVE: release.tar.gz
+        run: bash scripts/deploy-activate.sh

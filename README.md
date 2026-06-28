@@ -48,20 +48,43 @@ All routes under `/api` — session auth via OTP login.
 
 ## Production deploy (GitHub Actions)
 
-Pushes to `main` run tests, build assets, and deploy over SSH.
+Pushes to `main` run tests and build on GitHub, then deploy on your **self-hosted runner** (apstrix). No inbound SSH from GitHub is required.
 
-**GitHub secrets** (Settings → Secrets and variables → Actions):
+### One-time server setup
+
+```bash
+export APP_DIR=/www/wwwroot/edubridge   # your app root
+bash scripts/server-init.sh
+# Place production .env at: $APP_DIR/shared/.env
+```
+
+Point the web server document root to `{APP_DIR}/current/public`.
+
+### Install self-hosted runner (apstrix)
+
+1. Open [New self-hosted runner](https://github.com/gofreefolk/edubridge/settings/actions/runners/new)
+2. Copy the registration token
+3. On the server:
+
+```bash
+REGISTRATION_TOKEN=YOUR_TOKEN \
+  RUNNER_DIR=/opt/github-runner-edubridge \
+  bash scripts/install-github-runner.sh
+
+cd /opt/github-runner-edubridge
+sudo ./svc.sh install
+sudo ./svc.sh start
+```
+
+The runner must have labels: `self-hosted`, `linux`, `edubridge`.
+
+### GitHub secret
 
 | Secret | Description |
 |--------|-------------|
-| `PRODUCTION_HOST` | Server hostname or IP |
-| `PRODUCTION_USER` | SSH user (e.g. `deploy`) |
-| `PRODUCTION_PORT` | SSH port (e.g. `2308`) |
-| `PRODUCTION_PATH` | App root (e.g. `/var/www/edubridge`) |
-| `SSH_PRIVATE_KEY` | Full PEM private key (including `BEGIN`/`END` lines) |
+| `PRODUCTION_PATH` | App root on the server (e.g. `/www/wwwroot/edubridge`) |
 
-One-time server setup: `bash scripts/server-init.sh` then place `.env` at `shared/.env`.  
-Web root: `{PRODUCTION_PATH}/current/public`
+Ensure PHP 8.5+ CLI is on the server (`php -v`). The runner user must be able to write to `PRODUCTION_PATH`.
 
 ## License
 
