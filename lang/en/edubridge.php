@@ -11,6 +11,7 @@ return [
     'otp_max_attempts' => 'Too many incorrect attempts. Please request a new code.',
     'notice_not_found' => 'This notice link is invalid or has expired.',
     'notice_forbidden' => 'This notice is only for parents of this school.',
+    'forbidden' => 'You do not have permission to do this.',
     'unauthorized_role' => 'You do not have permission to access this.',
     'import_complete' => ':imported row(s) imported, :failed failed.',
     'school_created' => 'School created and admin invite sent.',
@@ -31,5 +32,12 @@ return [
     'section_has_students' => 'This section has students assigned. Move or update them before deleting.',
     'class_deleted' => 'Class removed.',
     'section_deleted' => 'Section removed.',
+    'notice_archived' => 'This notice has been archived and cannot be edited.',
+    'notice_not_published' => 'Only published notices can be unpublished.',
+    'notice_not_urgent' => 'WhatsApp alerts are only available for urgent published notices.',
+    'whatsapp_already_sent' => 'WhatsApp was already sent. Use resend to send again.',
+    'whatsapp_queued' => 'WhatsApp alert queued for :count parent(s) in the selected audience.',
+    'notice_scheduled' => 'Notice scheduled for publishing.',
+    'notice_unpublished' => 'Notice unpublished and archived.',
 
 ];

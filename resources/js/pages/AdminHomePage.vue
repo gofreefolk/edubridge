@@ -60,6 +60,12 @@
                 >
                     🎒 {{ t('admin.studentsShort') }}
                 </router-link>
+                <router-link
+                    :to="{ name: 'smc' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800"
+                >
+                    🏛️ {{ t('nav.smc') }}
+                </router-link>
             </div>
         </div>
 

@@ -17,6 +17,7 @@
                     </div>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
+                    <NotificationBell v-if="isAuthenticated" />
                     <router-link
                         v-if="!isAuthenticated"
                         :to="{ name: 'login' }"
@@ -72,6 +73,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
+import NotificationBell from '@/components/NotificationBell.vue';
 import RoleSwitcher from '@/components/RoleSwitcher.vue';
 import { useAuth } from '@/composables/useAuth';
 import { useRole } from '@/composables/useRole';

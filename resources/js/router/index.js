@@ -14,6 +14,7 @@ import StudentExamsPage from '@/pages/StudentExamsPage.vue';
 import DriverTripPage from '@/pages/DriverTripPage.vue';
 import AdminImportPage from '@/pages/AdminImportPage.vue';
 import AdminCreateNoticePage from '@/pages/AdminCreateNoticePage.vue';
+import AdminEditNoticePage from '@/pages/AdminEditNoticePage.vue';
 import AdminSchoolPage from '@/pages/AdminSchoolPage.vue';
 import AdminClassesPage from '@/pages/AdminClassesPage.vue';
 import AdminStaffPage from '@/pages/AdminStaffPage.vue';
@@ -63,6 +64,7 @@ const routes = [
     { path: '/driver', name: 'driver', component: DriverTripPage },
     { path: '/admin/import', name: 'admin-import', component: AdminImportPage },
     { path: '/admin/notices/create', name: 'admin-notice-create', component: AdminCreateNoticePage },
+    { path: '/admin/notices/:id/edit', name: 'admin-notice-edit', component: AdminEditNoticePage, props: true },
     { path: '/admin/school', name: 'admin-school', component: AdminSchoolPage },
     { path: '/admin/classes', name: 'admin-classes', component: AdminClassesPage },
     { path: '/admin/staff', name: 'admin-staff', component: AdminStaffPage },

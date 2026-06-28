@@ -43,7 +43,7 @@ class CalendarService
             EventReminder::query()->create([
                 'calendar_event_id' => $event->id,
                 'remind_at' => Carbon::parse($data['starts_at'])->subDay(),
-                'channel' => 'push',
+                'channel' => 'whatsapp',
             ]);
         }
 

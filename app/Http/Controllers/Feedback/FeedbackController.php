@@ -5,79 +5,133 @@ namespace App\Http\Controllers\Feedback;
 use App\Http\Controllers\Controller;
 use App\Models\FeedbackMessage;
 use App\Models\FeedbackThread;
+use App\Models\Student;
+use App\Services\Feedback\FeedbackService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FeedbackController extends Controller
 {
+    public function __construct(
+        private readonly FeedbackService $feedbackService,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        $request->validate(['school_id' => ['required', 'exists:schools,id']]);
+        $validated = $request->validate([
+            'school_id' => ['required', 'integer', 'exists:schools,id'],
+        ]);
 
-        $threads = FeedbackThread::query()
-            ->where('school_id', $request->query('school_id'))
-            ->where(function ($q) use ($request) {
-                $q->where('created_by', $request->user()->id)
-                    ->orWhere('assigned_to', $request->user()->id);
-            })
-            ->with(['messages' => fn ($q) => $q->latest()->limit(1)])
-            ->latest()
-            ->get();
+        $threads = $this->feedbackService
+            ->inboxQuery($request->user(), (int) $validated['school_id'])
+            ->get()
+            ->map(fn (FeedbackThread $thread) => $this->feedbackService->threadPayload($thread));
 
         return response()->json(['threads' => $threads]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function show(Request $request, FeedbackThread $thread): JsonResponse
     {
-        $data = $request->validate([
-            'school_id' => ['required', 'exists:schools,id'],
-            'student_id' => ['nullable', 'exists:students,id'],
-            'category' => ['required', 'string'],
-            'subject' => ['required', 'string', 'max:255'],
-            'body' => ['required', 'string'],
-            'direction' => ['required', 'in:parent_to_teacher,parent_to_smc,teacher_to_parent'],
+        if (! $this->feedbackService->canAccess($request->user(), $thread)) {
+            return response()->json(['message' => __('edubridge.forbidden')], 403);
+        }
+
+        $thread->load([
+            'creator:id,name,phone',
+            'student:id,name',
+            'messages' => fn ($q) => $q->with('author:id,name')->oldest(),
         ]);
 
+        return response()->json([
+            'thread' => $this->feedbackService->threadPayload($thread),
+            'can_resolve' => $this->feedbackService->canResolve($request->user(), $thread),
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'school_id' => ['required', 'integer', 'exists:schools,id'],
+            'student_id' => ['nullable', 'integer', 'exists:students,id'],
+            'category' => ['required', 'string', 'in:academic,transport,fees,general'],
+            'subject' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string', 'max:5000'],
+            'direction' => ['required', 'string', 'in:parent_to_teacher,parent_to_admin'],
+        ]);
+
+        if ($validated['student_id']) {
+            $student = Student::query()->findOrFail($validated['student_id']);
+            if ($student->school_id !== (int) $validated['school_id']) {
+                return response()->json(['message' => __('edubridge.forbidden')], 403);
+            }
+        }
+
         $thread = FeedbackThread::query()->create([
-            'school_id' => $data['school_id'],
-            'student_id' => $data['student_id'] ?? null,
+            'school_id' => $validated['school_id'],
+            'student_id' => $validated['student_id'] ?? null,
             'created_by' => $request->user()->id,
-            'category' => $data['category'],
-            'subject' => $data['subject'],
-            'direction' => $data['direction'],
+            'category' => $validated['category'],
+            'subject' => $validated['subject'],
+            'direction' => $validated['direction'],
             'status' => 'open',
         ]);
 
         FeedbackMessage::query()->create([
             'feedback_thread_id' => $thread->id,
             'author_id' => $request->user()->id,
-            'body' => $data['body'],
+            'body' => $validated['body'],
         ]);
 
-        return response()->json(['thread' => $thread->load('messages')], 201);
+        $thread->load([
+            'creator:id,name,phone',
+            'student:id,name',
+            'messages' => fn ($q) => $q->with('author:id,name')->oldest(),
+        ]);
+
+        return response()->json([
+            'thread' => $this->feedbackService->threadPayload($thread),
+        ], 201);
     }
 
     public function reply(Request $request, FeedbackThread $thread): JsonResponse
     {
-        $data = $request->validate(['body' => ['required', 'string']]);
+        if (! $this->feedbackService->canAccess($request->user(), $thread)) {
+            return response()->json(['message' => __('edubridge.forbidden')], 403);
+        }
 
-        $message = FeedbackMessage::query()->create([
-            'feedback_thread_id' => $thread->id,
-            'author_id' => $request->user()->id,
-            'body' => $data['body'],
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'max:5000'],
         ]);
 
-        if ($thread->status === 'open' && $thread->created_by !== $request->user()->id) {
+        FeedbackMessage::query()->create([
+            'feedback_thread_id' => $thread->id,
+            'author_id' => $request->user()->id,
+            'body' => $validated['body'],
+        ]);
+
+        if ($thread->status === 'open') {
             $thread->update(['status' => 'acknowledged']);
         }
 
-        return response()->json(['message' => $message]);
+        $thread->load([
+            'creator:id,name,phone',
+            'student:id,name',
+            'messages' => fn ($q) => $q->with('author:id,name')->oldest(),
+        ]);
+
+        return response()->json([
+            'thread' => $this->feedbackService->threadPayload($thread),
+        ]);
     }
 
-    public function resolve(FeedbackThread $thread): JsonResponse
+    public function resolve(Request $request, FeedbackThread $thread): JsonResponse
     {
+        if (! $this->feedbackService->canResolve($request->user(), $thread)) {
+            return response()->json(['message' => __('edubridge.forbidden')], 403);
+        }
+
         $thread->update(['status' => 'resolved']);
 
-        return response()->json(['thread' => $thread]);
+        return response()->json(['thread' => ['id' => $thread->id, 'status' => 'resolved']]);
     }
 }

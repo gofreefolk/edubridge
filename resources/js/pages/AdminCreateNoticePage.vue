@@ -5,7 +5,7 @@
             <p class="mt-2 text-sm text-slate-600">{{ t('admin.createNoticeSubtitle') }}</p>
         </div>
 
-        <form v-if="!publishedNotice" class="space-y-3 rounded-2xl border border-slate-200 bg-white p-4" @submit.prevent="submit">
+        <form v-if="!publishedNotice && !draftSaved" class="space-y-3 rounded-2xl border border-slate-200 bg-white p-4" @submit.prevent="submit(true)">
             <label class="block">
                 <span class="text-sm font-medium text-slate-700">{{ t('admin.noticeTitleMl') }}</span>
                 <input
@@ -98,22 +98,65 @@
                 />
             </label>
 
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">{{ t('admin.schedulePublish') }}</span>
+                <input
+                    v-model="scheduledAt"
+                    type="datetime-local"
+                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-3 text-base"
+                />
+                <span class="mt-1 block text-xs text-slate-500">{{ t('admin.schedulePublishHint') }}</span>
+            </label>
+
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">{{ t('admin.noticeAttachments') }}</span>
+                <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    class="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm"
+                    @change="onFilesSelected"
+                />
+                <span class="mt-1 block text-xs text-slate-500">{{ t('admin.noticeAttachmentsHint') }}</span>
+                <ul v-if="selectedFiles.length" class="mt-2 space-y-1 text-sm text-slate-600">
+                    <li v-for="file in selectedFiles" :key="file.name">{{ file.name }}</li>
+                </ul>
+            </label>
+
             <p v-if="error" class="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>
 
-            <button
-                type="submit"
-                class="w-full rounded-xl bg-blue-700 py-3 text-base font-semibold text-white disabled:opacity-60"
-                :disabled="submitting"
-            >
-                {{ submitting ? t('common.loading') : t('admin.publishNotice') }}
-            </button>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                    type="button"
+                    class="rounded-xl border border-slate-300 bg-white py-3 text-base font-semibold text-slate-800 disabled:opacity-60"
+                    :disabled="submitting"
+                    @click="saveDraft"
+                >
+                    {{ submitting ? t('common.loading') : t('admin.saveDraft') }}
+                </button>
+                <button
+                    type="submit"
+                    class="rounded-xl bg-blue-700 py-3 text-base font-semibold text-white disabled:opacity-60"
+                    :disabled="submitting"
+                >
+                    {{ submitLabel }}
+                </button>
+            </div>
         </form>
 
+        <div v-else-if="draftSaved" class="space-y-3 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+            <p class="font-semibold text-blue-900">{{ t('admin.draftSaved') }}</p>
+            <router-link :to="{ name: 'notices' }" class="block text-center text-sm font-semibold text-blue-800 underline">
+                {{ t('admin.backToNotices') }}
+            </router-link>
+        </div>
+
         <div v-else class="space-y-3 rounded-2xl border border-green-200 bg-green-50 p-4">
-            <p class="font-semibold text-green-900">{{ t('admin.noticePublished') }}</p>
-            <p class="text-sm text-green-800">{{ t('admin.shareLinkHint') }}</p>
-            <div class="rounded-xl bg-white p-3 text-sm break-all text-slate-800">{{ shareUrl }}</div>
+            <p class="font-semibold text-green-900">{{ successTitle }}</p>
+            <p v-if="!wasScheduled" class="text-sm text-green-800">{{ t('admin.shareLinkHint') }}</p>
+            <div v-if="shareUrl" class="rounded-xl bg-white p-3 text-sm break-all text-slate-800">{{ shareUrl }}</div>
             <button
+                v-if="shareUrl"
                 type="button"
                 class="w-full rounded-xl border border-green-300 bg-white py-3 text-sm font-semibold text-green-900"
                 @click="copyLink"
@@ -145,7 +188,11 @@ const selectedSectionId = ref('');
 const submitting = ref(false);
 const error = ref('');
 const publishedNotice = ref(null);
+const draftSaved = ref(false);
 const copied = ref(false);
+const scheduledAt = ref('');
+const wasScheduled = ref(false);
+const selectedFiles = ref([]);
 
 const form = reactive({
     title: '',
@@ -170,6 +217,15 @@ const shareUrl = computed(() => {
     return `${window.location.origin}/n/${publishedNotice.value.magic_link_token}`;
 });
 
+const submitLabel = computed(() => {
+    if (submitting.value) return t('common.loading');
+    return scheduledAt.value ? t('admin.scheduleNotice') : t('admin.publishNotice');
+});
+
+const successTitle = computed(() => (
+    wasScheduled.value ? t('admin.noticeScheduledSuccess') : t('admin.noticePublished')
+));
+
 async function loadClasses() {
     if (!activeSchoolId.value) {
         return;
@@ -193,28 +249,48 @@ function buildAudiences() {
     return [];
 }
 
-async function submit() {
+function onFilesSelected(event) {
+    selectedFiles.value = Array.from(event.target.files ?? []);
+}
+
+async function saveDraft() {
+    await submit(false);
+}
+
+async function submit(publish = true) {
     error.value = '';
     submitting.value = true;
+    wasScheduled.value = false;
 
     try {
-        const payload = {
-            school_id: activeSchoolId.value,
-            title: form.title,
-            body: form.body,
-            title_en: form.title_en || null,
-            body_en: form.body_en || null,
-            priority: form.priority,
-            audience_type: form.audience_type,
-            pin_days: form.pin_days || null,
-            audiences: buildAudiences(),
-        };
+        const fd = new FormData();
+        fd.append('school_id', activeSchoolId.value);
+        fd.append('title', form.title);
+        fd.append('body', form.body);
+        if (form.title_en) fd.append('title_en', form.title_en);
+        if (form.body_en) fd.append('body_en', form.body_en);
+        fd.append('priority', form.priority);
+        fd.append('audience_type', form.audience_type);
+        if (form.pin_days) fd.append('pin_days', String(form.pin_days));
+        fd.append('audiences', JSON.stringify(buildAudiences()));
+        selectedFiles.value.forEach((file) => fd.append('attachments[]', file));
 
-        const { data: created } = await axios.post('/api/notices', payload);
-        const { data: published } = await axios.post(`/api/notices/${created.notice.id}/publish`);
+        const { data: created } = await axios.post('/api/notices', fd);
+
+        if (!publish) {
+            draftSaved.value = true;
+            return;
+        }
+
+        const publishPayload = scheduledAt.value
+            ? { scheduled_publish_at: new Date(scheduledAt.value).toISOString() }
+            : {};
+
+        const { data: published } = await axios.post(`/api/notices/${created.notice.id}/publish`, publishPayload);
         publishedNotice.value = published.notice;
+        wasScheduled.value = Boolean(scheduledAt.value && published.notice.status === 'draft');
     } catch (err) {
-        error.value = err?.response?.data?.message ?? t('auth.genericError');
+        error.value = err?.response?.data?.message ?? t('common.error');
     } finally {
         submitting.value = false;
     }

@@ -27,8 +27,8 @@ export const ROLE_NAVIGATION = {
     ],
     school_admin: [
         { key: 'home', label: 'nav.home', icon: '🏠', route: 'home' },
-        { key: 'import', label: 'admin.importShort', icon: '📥', route: 'admin-import' },
         { key: 'notices', label: 'nav.notices', icon: '📋', route: 'notices' },
+        { key: 'messages', label: 'nav.messages', icon: '💬', route: 'messages' },
         { key: 'calendar', label: 'nav.calendar', icon: '📅', route: 'calendar' },
     ],
     teacher: [
@@ -76,7 +76,7 @@ export const ROUTE_ROLES = {
     'notice-magic': null,
     notices: ['parent', 'grandparent', 'school_admin', 'teacher', 'smc_member', 'student', 'alumni', 'transport_staff', 'super_admin'],
     calendar: ['parent', 'grandparent', 'school_admin', 'teacher', 'smc_member', 'student', 'alumni', 'transport_staff', 'super_admin'],
-    messages: ['parent', 'grandparent', 'teacher', 'alumni'],
+    messages: ['parent', 'grandparent', 'teacher', 'school_admin', 'alumni', 'super_admin'],
     'my-child': ['parent', 'grandparent', 'student'],
     smc: ['school_admin', 'smc_member', 'parent', 'grandparent', 'super_admin'],
     alumni: ['alumni'],
@@ -86,6 +86,7 @@ export const ROUTE_ROLES = {
     'student-exams': ['student'],
     'admin-import': ['school_admin', 'super_admin'],
     'admin-notice-create': ['school_admin', 'super_admin'],
+    'admin-notice-edit': ['school_admin', 'super_admin'],
     'admin-school': ['school_admin', 'super_admin'],
     'admin-classes': ['school_admin', 'super_admin'],
     'admin-staff': ['school_admin', 'super_admin'],

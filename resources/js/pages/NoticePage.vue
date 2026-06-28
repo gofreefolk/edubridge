@@ -40,6 +40,23 @@
             >
                 {{ localizedBody }}
             </article>
+
+            <div v-if="notice.attachments?.length" class="rounded-2xl border border-slate-200 bg-white p-4">
+                <p class="text-sm font-semibold text-slate-700">{{ t('notice.attachments') }}</p>
+                <ul class="mt-2 space-y-2">
+                    <li v-for="file in notice.attachments" :key="file.id">
+                        <a
+                            :href="file.url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-50"
+                        >
+                            <span aria-hidden="true">📎</span>
+                            {{ file.filename }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </template>
     </section>
 </template>

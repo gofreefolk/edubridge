@@ -49,6 +49,10 @@ class NoticeService
 
     public function update(Notice $notice, array $data): Notice
     {
+        if ($notice->status === 'archived') {
+            throw new \InvalidArgumentException('notice_archived');
+        }
+
         $notice->update([
             'title' => $data['title'] ?? $notice->title,
             'body' => $data['body'] ?? $notice->body,
@@ -65,14 +69,150 @@ class NoticeService
             $this->syncAudiences($notice, $data['audiences']);
         }
 
+        if (array_key_exists('scheduled_publish_at', $data) && in_array($notice->status, ['draft'], true)) {
+            $scheduledAt = $data['scheduled_publish_at']
+                ? Carbon::parse($data['scheduled_publish_at'])
+                : null;
+
+            if ($scheduledAt && $scheduledAt->isFuture()) {
+                $notice->update(['scheduled_publish_at' => $scheduledAt]);
+            } elseif ($scheduledAt === null) {
+                $notice->update(['scheduled_publish_at' => null]);
+            }
+        }
+
         return $notice->fresh(['attachments', 'audiences']);
     }
 
-    public function publish(Notice $notice): Notice
+    public function publish(Notice $notice, ?Carbon $scheduledAt = null): Notice
+    {
+        if ($notice->status === 'archived') {
+            throw new \InvalidArgumentException('notice_archived');
+        }
+
+        if ($scheduledAt && $scheduledAt->isFuture()) {
+            $notice->update([
+                'scheduled_publish_at' => $scheduledAt,
+                'status' => 'draft',
+            ]);
+
+            return $notice->fresh();
+        }
+
+        return $this->publishImmediately($notice);
+    }
+
+    public function publishDueScheduled(): int
+    {
+        $count = 0;
+
+        Notice::query()
+            ->where('status', 'draft')
+            ->whereNotNull('scheduled_publish_at')
+            ->where('scheduled_publish_at', '<=', now())
+            ->orderBy('scheduled_publish_at')
+            ->each(function (Notice $notice) use (&$count) {
+                $this->publishImmediately($notice);
+                $count++;
+            });
+
+        return $count;
+    }
+
+    public function unpublish(Notice $notice): Notice
+    {
+        if ($notice->status !== 'published') {
+            throw new \InvalidArgumentException('notice_not_published');
+        }
+
+        $notice->update([
+            'status' => 'archived',
+            'scheduled_publish_at' => null,
+        ]);
+
+        return $notice->fresh();
+    }
+
+    public function sendUrgentWhatsApp(Notice $notice, bool $force = false): int
+    {
+        if ($notice->status !== 'published' || $notice->priority !== 'urgent') {
+            throw new \InvalidArgumentException('notice_not_urgent');
+        }
+
+        if (! $force && $notice->whatsapp_sent_at) {
+            throw new \InvalidArgumentException('whatsapp_already_sent');
+        }
+
+        SendUrgentNoticeWhatsApp::dispatch($notice->id);
+
+        return $this->eligibleRecipientUsers($notice)->count();
+    }
+
+    /**
+     * @return array{eligible_count: int, read_count: int, read_percent: float, readers: array<int, array<string, mixed>>, unread: array<int, array<string, mixed>>}
+     */
+    public function analytics(Notice $notice): array
+    {
+        $eligible = $this->eligibleRecipientUsers($notice);
+        $reads = $notice->reads()->with('user:id,name,phone')->get()->keyBy('user_id');
+
+        $readers = [];
+        $unread = [];
+
+        foreach ($eligible as $user) {
+            $read = $reads->get($user->id);
+            $entry = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'read_at' => $read?->read_at?->toIso8601String(),
+            ];
+
+            if ($read) {
+                $readers[] = $entry;
+            } else {
+                $unread[] = $entry;
+            }
+        }
+
+        $eligibleCount = count($eligible);
+        $readCount = count($readers);
+
+        return [
+            'eligible_count' => $eligibleCount,
+            'read_count' => $readCount,
+            'read_percent' => $eligibleCount > 0 ? round(($readCount / $eligibleCount) * 100, 1) : 0.0,
+            'readers' => $readers,
+            'unread' => $unread,
+        ];
+    }
+
+    /**
+     * Parents/grandparents at the school who should receive this notice.
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public function eligibleRecipientUsers(Notice $notice): \Illuminate\Support\Collection
+    {
+        $userIds = DB::table('school_user')
+            ->where('school_id', $notice->school_id)
+            ->whereIn('role', ['parent', 'grandparent'])
+            ->where('is_active', true)
+            ->pluck('user_id');
+
+        return User::query()
+            ->whereIn('id', $userIds)
+            ->get()
+            ->filter(fn (User $user) => $this->parentMatchesAudience($user, $notice))
+            ->values();
+    }
+
+    private function publishImmediately(Notice $notice): Notice
     {
         $notice->update([
             'status' => 'published',
             'published_at' => now(),
+            'scheduled_publish_at' => null,
             'magic_link_token' => $notice->magic_link_token ?? Notice::generateMagicLinkToken(),
         ]);
 

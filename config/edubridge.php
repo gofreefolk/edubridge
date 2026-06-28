@@ -7,6 +7,7 @@ return [
     'whatsapp' => [
         'driver' => env('EDUBRIDGE_WHATSAPP_DRIVER', 'log'),
         'enabled' => env('EDUBRIDGE_WHATSAPP_ENABLED', true),
+        'webhook_url' => env('EDUBRIDGE_WHATSAPP_WEBHOOK_URL'),
     ],
     'otp' => [
         'length' => 6,

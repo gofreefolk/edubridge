@@ -24,6 +24,8 @@ class Notice extends Model
         'audience_type',
         'pinned_until',
         'published_at',
+        'scheduled_publish_at',
+        'whatsapp_sent_at',
         'magic_link_token',
         'status',
     ];
@@ -33,6 +35,8 @@ class Notice extends Model
         return [
             'pinned_until' => 'datetime',
             'published_at' => 'datetime',
+            'scheduled_publish_at' => 'datetime',
+            'whatsapp_sent_at' => 'datetime',
         ];
     }
 

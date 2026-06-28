@@ -40,27 +40,50 @@
             </div>
 
             <div class="grid gap-3">
-                <div
+                <router-link
                     v-if="dashboard?.upcoming_events?.[0]"
-                    class="rounded-2xl border border-slate-200 bg-white p-4"
+                    :to="{ name: 'calendar' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-200"
                 >
                     <p class="text-base text-slate-700">
                         <span class="mr-2" aria-hidden="true">📅</span>
                         {{ t('home.upcoming') }}: {{ eventTitle(dashboard.upcoming_events[0]) }}
                     </p>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                </router-link>
+                <router-link
+                    :to="{ name: 'notices' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-200"
+                >
                     <p class="text-base text-slate-700">
                         <span class="mr-2" aria-hidden="true">📋</span>
                         {{ dashboard?.stats?.new_notices ?? 0 }} {{ t('home.newNotices') }}
                     </p>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                </router-link>
+                <router-link
+                    :to="{ name: 'messages' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-200"
+                >
                     <p class="text-base text-slate-700">
                         <span class="mr-2" aria-hidden="true">💬</span>
                         {{ dashboard?.stats?.replies_waiting ?? 0 }} {{ t('home.repliesWaiting') }}
                     </p>
-                </div>
+                </router-link>
+            </div>
+
+            <div v-if="isParent" class="rounded-2xl border border-green-200 bg-green-50 p-4">
+                <label class="flex items-start gap-3">
+                    <input
+                        v-model="whatsappOptIn"
+                        type="checkbox"
+                        class="mt-1 h-5 w-5 rounded border-slate-300"
+                        :disabled="savingOptIn"
+                        @change="saveWhatsAppOptIn"
+                    />
+                    <span>
+                        <span class="block font-semibold text-green-900">{{ t('home.whatsappOptInTitle') }}</span>
+                        <span class="mt-1 block text-sm text-green-800">{{ t('home.whatsappOptInHint') }}</span>
+                    </span>
+                </label>
             </div>
 
             <div v-if="!isAuthenticated" class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
@@ -75,16 +98,21 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useAuth } from '@/composables/useAuth';
+import { useRole } from '@/composables/useRole';
 import { useSchoolContext } from '@/composables/useSchoolContext';
 
 const { t, locale } = useI18n();
 const { user, isAuthenticated } = useAuth();
+const { activeRole } = useRole();
 const { activeSchoolId, activeStudentId, children } = useSchoolContext();
 
 const loading = ref(false);
 const dashboard = ref(null);
+const whatsappOptIn = ref(false);
+const savingOptIn = ref(false);
 
 const largeText = computed(() => user.value?.large_text_mode ?? false);
+const isParent = computed(() => ['parent', 'grandparent'].includes(activeRole.value));
 
 function noticeTitle(notice) {
     return locale.value === 'en' && notice.title_en ? notice.title_en : notice.title;
@@ -95,7 +123,7 @@ function eventTitle(event) {
 }
 
 async function loadDashboard() {
-    if (!isAuthenticated.value || !activeSchoolId.value) {
+    if (!isAuthenticated.value || !activeSchoolId.value || !isParent.value) {
         dashboard.value = null;
         return;
     }
@@ -114,11 +142,40 @@ async function loadDashboard() {
     }
 }
 
+async function loadWhatsAppOptIn() {
+    if (!isAuthenticated.value || !activeSchoolId.value || !isParent.value) {
+        return;
+    }
+
+    const { data } = await axios.get('/api/comms/whatsapp-opt-in', {
+        params: { school_id: activeSchoolId.value },
+    });
+    whatsappOptIn.value = data.opted_in;
+}
+
+async function saveWhatsAppOptIn() {
+    savingOptIn.value = true;
+    try {
+        await axios.put('/api/comms/whatsapp-opt-in', {
+            school_id: activeSchoolId.value,
+            opted_in: whatsappOptIn.value,
+        });
+    } finally {
+        savingOptIn.value = false;
+    }
+}
+
 function selectChild(child) {
     activeStudentId.value = child.id;
     activeSchoolId.value = child.school_id;
 }
 
-watch([activeSchoolId, activeStudentId, isAuthenticated], loadDashboard);
-onMounted(loadDashboard);
+watch([activeSchoolId, activeStudentId, isAuthenticated, isParent], () => {
+    loadDashboard();
+    loadWhatsAppOptIn();
+});
+onMounted(() => {
+    loadDashboard();
+    loadWhatsAppOptIn();
+});
 </script>

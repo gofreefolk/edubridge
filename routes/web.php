@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\SchoolStudentController;
 use App\Http\Controllers\Alumni\AlumniController;
 use App\Http\Controllers\Auth\OtpAuthController;
 use App\Http\Controllers\Calendar\CalendarController;
+use App\Http\Controllers\Comms\NotificationSummaryController;
+use App\Http\Controllers\Comms\WhatsAppOptInController;
 use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\Feedback\FeedbackController;
 use App\Http\Controllers\Notice\MagicLinkNoticeController;
@@ -47,13 +49,20 @@ Route::prefix('api')->group(function () {
 
         Route::middleware('role:parent,grandparent,school_admin,teacher,smc_member,super_admin')->group(function () {
             Route::get('feedback', [FeedbackController::class, 'index']);
+            Route::get('feedback/{thread}', [FeedbackController::class, 'show']);
             Route::post('feedback/{thread}/reply', [FeedbackController::class, 'reply']);
             Route::post('feedback/{thread}/resolve', [FeedbackController::class, 'resolve']);
+            Route::get('comms/summary', [NotificationSummaryController::class, 'show']);
+            Route::post('feedback', [FeedbackController::class, 'store']);
+        });
+
+        Route::middleware('role:parent,grandparent')->group(function () {
+            Route::get('comms/whatsapp-opt-in', [WhatsAppOptInController::class, 'show']);
+            Route::put('comms/whatsapp-opt-in', [WhatsAppOptInController::class, 'update']);
         });
 
         Route::middleware('role:parent,grandparent')->group(function () {
             Route::get('parent/dashboard', [ParentDashboardController::class, 'show']);
-            Route::post('feedback', [FeedbackController::class, 'store']);
             Route::get('student/dashboard', [StudentPortalController::class, 'dashboard']);
             Route::get('transport/student', [TransportController::class, 'studentStatus']);
             Route::post('transport/absence', [TransportController::class, 'reportAbsence']);
@@ -83,6 +92,9 @@ Route::prefix('api')->group(function () {
             Route::post('notices', [NoticeController::class, 'store']);
             Route::put('notices/{notice}', [NoticeController::class, 'update']);
             Route::post('notices/{notice}/publish', [NoticeController::class, 'publish']);
+            Route::post('notices/{notice}/unpublish', [NoticeController::class, 'unpublish']);
+            Route::get('notices/{notice}/stats', [NoticeController::class, 'stats']);
+            Route::post('notices/{notice}/whatsapp', [NoticeController::class, 'sendWhatsApp']);
             Route::post('calendar', [CalendarController::class, 'store']);
             Route::post('smc/meetings', [SmcController::class, 'storeMeeting']);
             Route::put('smc/meetings/{meeting}/minutes', [SmcController::class, 'updateMeetingMinutes']);
@@ -94,7 +106,6 @@ Route::prefix('api')->group(function () {
             Route::post('teacher/attendance', [TeacherWorkspaceController::class, 'markAttendance']);
             Route::post('teacher/homework', [TeacherWorkspaceController::class, 'assignHomework']);
             Route::post('teacher/marks', [TeacherWorkspaceController::class, 'enterMarks']);
-            Route::post('feedback', [FeedbackController::class, 'store']);
             Route::get('exams', [ExamController::class, 'index']);
             Route::post('exams', [ExamController::class, 'store']);
             Route::post('exams/{exam}/publish', [ExamController::class, 'publish']);

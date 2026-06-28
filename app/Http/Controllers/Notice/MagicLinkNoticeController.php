@@ -20,7 +20,7 @@ class MagicLinkNoticeController extends Controller
         $notice = Notice::query()
             ->published()
             ->where('magic_link_token', $token)
-            ->with('school:id,name')
+            ->with(['school:id,name', 'attachments'])
             ->first();
 
         if (! $notice) {
@@ -48,6 +48,11 @@ class MagicLinkNoticeController extends Controller
                     'id' => $notice->school->id,
                     'name' => $notice->school->name,
                 ],
+                'attachments' => $notice->attachments->map(fn ($a) => [
+                    'id' => $a->id,
+                    'filename' => $a->filename,
+                    'url' => asset('storage/'.$a->path),
+                ]),
             ],
         ]);
     }

@@ -6,6 +6,16 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreNoticeRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->audiences)) {
+            $decoded = json_decode($this->audiences, true);
+            if (is_array($decoded)) {
+                $this->merge(['audiences' => $decoded]);
+            }
+        }
+    }
+
     public function authorize(): bool
     {
         $user = $this->user();
