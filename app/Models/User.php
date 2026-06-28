@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['name', 'email', 'password', 'phone', 'preferred_locale', 'large_text_mode'])]
 #[Hidden(['password', 'remember_token'])]
@@ -61,13 +62,27 @@ class User extends Authenticatable
     /** @return list<string> */
     public function getRoles(): array
     {
-        return $this->schools()
+        $schoolRoles = $this->schools()
             ->wherePivot('is_active', true)
             ->get()
-            ->pluck('pivot.role')
+            ->pluck('pivot.role');
+
+        $platformRoles = DB::table('school_user')
+            ->where('user_id', $this->id)
+            ->whereNull('school_id')
+            ->where('is_active', true)
+            ->pluck('role');
+
+        return $schoolRoles
+            ->merge($platformRoles)
             ->unique()
             ->values()
             ->all();
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return in_array('super_admin', $this->getRoles(), true);
     }
 
     public function hasAnyRole(string ...$roles): bool

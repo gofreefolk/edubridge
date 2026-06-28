@@ -154,5 +154,53 @@
         "tripActive": "Trip in progress",
         "noRoutes": "No routes assigned.",
         "stops": "stops"
+    },
+    "platform": {
+        "console": "Platform Console",
+        "loginTitle": "Platform sign in",
+        "loginSubtitle": "For EduBridge platform administrators only.",
+        "loginHeroTitle": "Manage every school from one console",
+        "loginHeroSubtitle": "Monitor schools, users, and notices across the Kerala school network.",
+        "loginHintTitle": "What you can do",
+        "loginHintSchools": "View all onboarded schools and activity",
+        "loginHintUsers": "Track users and engagement platform-wide",
+        "loginHintMonitor": "Monitor notices and published updates",
+        "phonePlaceholder": "9900000001",
+        "enterConsole": "Enter platform console",
+        "notAuthorized": "This phone number is not registered as a platform administrator.",
+        "parentLoginHint": "Parents and teachers should use the",
+        "welcomeBack": "Welcome back",
+        "dashboardTitle": "Platform overview",
+        "dashboardSubtitle": "A snapshot of schools, users, and communication activity across EduBridge.",
+        "schoolsTitle": "Schools",
+        "schoolsSubtitle": "All schools registered on the EduBridge platform.",
+        "openApp": "Open school app",
+        "recentSchools": "Recently added schools",
+        "recentSchoolsHint": "Latest schools on the platform",
+        "viewAllSchools": "View all schools",
+        "noSchools": "No schools registered yet.",
+        "students": "students",
+        "users": "users",
+        "active": "Active",
+        "inactive": "Inactive",
+        "nav": {
+            "dashboard": "Dashboard",
+            "schools": "Schools"
+        },
+        "stats": {
+            "schools": "Total schools",
+            "activeSchools": "Active schools",
+            "users": "Total users",
+            "students": "Total students",
+            "notices": "Total notices",
+            "publishedNotices": "Published notices"
+        },
+        "table": {
+            "school": "School",
+            "district": "District",
+            "type": "Type",
+            "notices": "Notices",
+            "status": "Status"
+        }
     }
 }

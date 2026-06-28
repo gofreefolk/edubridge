@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Platform\PlatformController;
 use App\Http\Controllers\Admin\SchoolSetupController;
 use App\Http\Controllers\Alumni\AlumniController;
 use App\Http\Controllers\Auth\OtpAuthController;
@@ -96,6 +97,11 @@ Route::prefix('api')->group(function () {
             Route::put('alumni/profile', [AlumniController::class, 'updateProfile']);
             Route::post('alumni/mentorship', [AlumniController::class, 'requestMentorship']);
             Route::post('alumni/jobs', [AlumniController::class, 'postJob']);
+        });
+
+        Route::middleware('role:super_admin')->prefix('platform')->group(function () {
+            Route::get('dashboard', [PlatformController::class, 'dashboard']);
+            Route::get('schools', [PlatformController::class, 'schools']);
         });
     });
 });

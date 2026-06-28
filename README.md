@@ -24,11 +24,13 @@ php artisan serve
 
 | Role | Phone |
 |------|-------|
+| **Platform Admin (Super Admin)** | **9900000001** |
 | School Admin | 9876543210 |
 | Parent | 9123456789 |
 | Teacher | 9876501234 |
 | Alumni | 9988776655 |
 
+**Platform admin console:** `/platform/login`  
 **Demo magic link notice:** `/n/demo123abc`
 
 ## Features

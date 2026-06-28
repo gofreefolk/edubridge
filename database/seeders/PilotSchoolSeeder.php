@@ -34,6 +34,7 @@ use App\Models\WhatsAppOptIn;
 use App\Services\Calendar\CalendarService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PilotSchoolSeeder extends Seeder
 {
@@ -74,6 +75,23 @@ class PilotSchoolSeeder extends Seeder
         $admin->schools()->syncWithoutDetaching([
             $school->id => ['role' => 'school_admin', 'is_active' => true],
         ]);
+
+        $superAdmin = User::query()->firstOrCreate(
+            ['phone' => '9900000001'],
+            ['name' => 'Platform Admin', 'preferred_locale' => 'en'],
+        );
+        DB::table('school_user')->updateOrInsert(
+            [
+                'school_id' => null,
+                'user_id' => $superAdmin->id,
+                'role' => 'super_admin',
+            ],
+            [
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
 
         $teacher = User::query()->firstOrCreate(
             ['phone' => '9876501234'],
