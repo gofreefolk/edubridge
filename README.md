@@ -56,6 +56,7 @@ Pushes to `main` run tests, build assets, and deploy over SSH.
 |--------|-------------|
 | `PRODUCTION_HOST` | Server hostname or IP |
 | `PRODUCTION_USER` | SSH user (e.g. `deploy`) |
+| `PRODUCTION_PORT` | SSH port (e.g. `2308`) |
 | `PRODUCTION_PATH` | App root (e.g. `/var/www/edubridge`) |
 | `SSH_PRIVATE_KEY` | Full PEM private key (including `BEGIN`/`END` lines) |
 

@@ -86,6 +86,7 @@ jobs:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
           source: release.tar.gz
           target: ${{ secrets.PRODUCTION_PATH }}
 
@@ -95,6 +96,7 @@ jobs:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
           script: |
             set -euo pipefail
             APP_DIR="${{ secrets.PRODUCTION_PATH }}"
