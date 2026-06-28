@@ -20,6 +20,8 @@
                     v-for="card in statCards"
                     :key="card.key"
                     class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    :class="card.link ? 'cursor-pointer transition hover:border-blue-200 hover:shadow-md' : ''"
+                    @click="card.link ? $router.push({ name: card.link }) : null"
                 >
                     <div class="flex items-start justify-between gap-3">
                         <div>
@@ -99,6 +101,7 @@ const loading = ref(true);
 const stats = ref({
     schools: 0,
     active_schools: 0,
+    pending_registrations: 0,
     users: 0,
     students: 0,
     notices: 0,
@@ -120,6 +123,14 @@ const statCards = computed(() => [
         value: stats.value.active_schools,
         icon: '✅',
         iconClass: 'bg-emerald-50 text-emerald-700',
+    },
+    {
+        key: 'pending_registrations',
+        label: t('platform.stats.pendingRegistrations'),
+        value: stats.value.pending_registrations,
+        icon: '📝',
+        iconClass: 'bg-amber-50 text-amber-700',
+        link: 'platform-registrations',
     },
     {
         key: 'users',

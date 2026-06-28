@@ -86,6 +86,10 @@ export const ROUTE_ROLES = {
     'student-exams': ['student'],
     'admin-import': ['school_admin', 'super_admin'],
     'admin-notice-create': ['school_admin', 'super_admin'],
+    'admin-school': ['school_admin', 'super_admin'],
+    'admin-classes': ['school_admin', 'super_admin'],
+    'admin-staff': ['school_admin', 'super_admin'],
+    'admin-students': ['school_admin', 'super_admin'],
 };
 
 export function resolvePrimaryRole(roles) {

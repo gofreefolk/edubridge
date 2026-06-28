@@ -95,12 +95,16 @@ const { user, logout } = useAuth();
 const navItems = [
     { route: 'platform-dashboard', label: 'platform.nav.dashboard', icon: '📊' },
     { route: 'platform-schools', label: 'platform.nav.schools', icon: '🏫' },
+    { route: 'platform-registrations', label: 'platform.nav.registrations', icon: '📝' },
 ];
 
 const pageTitle = computed(() => {
     const titles = {
         'platform-dashboard': t('platform.dashboardTitle'),
         'platform-schools': t('platform.schoolsTitle'),
+        'platform-registrations': t('platform.registrationsTitle'),
+        'platform-school-create': t('platform.createSchoolTitle'),
+        'platform-school-detail': t('platform.schoolDetailTitle'),
     };
 
     return titles[route.name] ?? t('platform.console');

@@ -31,6 +31,7 @@ php artisan serve
 | Alumni | 9988776655 |
 
 **Platform admin console:** `/platform/login`  
+**School registration:** `/school/register`  
 **Demo magic link notice:** `/n/demo123abc`
 
 ## Features

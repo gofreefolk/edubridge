@@ -14,8 +14,17 @@ import StudentExamsPage from '@/pages/StudentExamsPage.vue';
 import DriverTripPage from '@/pages/DriverTripPage.vue';
 import AdminImportPage from '@/pages/AdminImportPage.vue';
 import AdminCreateNoticePage from '@/pages/AdminCreateNoticePage.vue';
+import AdminSchoolPage from '@/pages/AdminSchoolPage.vue';
+import AdminClassesPage from '@/pages/AdminClassesPage.vue';
+import AdminStaffPage from '@/pages/AdminStaffPage.vue';
+import AdminStudentsPage from '@/pages/AdminStudentsPage.vue';
 import PlatformDashboardPage from '@/pages/platform/PlatformDashboardPage.vue';
 import PlatformSchoolsPage from '@/pages/platform/PlatformSchoolsPage.vue';
+import PlatformCreateSchoolPage from '@/pages/platform/PlatformCreateSchoolPage.vue';
+import PlatformSchoolDetailPage from '@/pages/platform/PlatformSchoolDetailPage.vue';
+import PlatformRegistrationsPage from '@/pages/platform/PlatformRegistrationsPage.vue';
+import SchoolRegisterPage from '@/pages/SchoolRegisterPage.vue';
+import AdminInviteAcceptPage from '@/pages/AdminInviteAcceptPage.vue';
 import { useAuth } from '@/composables/useAuth';
 import { useRole } from '@/composables/useRole';
 import { applyUserLocale, setLocale } from '@/i18n';
@@ -35,8 +44,13 @@ const routes = [
         children: [
             { path: '', name: 'platform-dashboard', component: PlatformDashboardPage },
             { path: 'schools', name: 'platform-schools', component: PlatformSchoolsPage },
+            { path: 'schools/new', name: 'platform-school-create', component: PlatformCreateSchoolPage },
+            { path: 'schools/:id', name: 'platform-school-detail', component: PlatformSchoolDetailPage, props: true },
+            { path: 'registrations', name: 'platform-registrations', component: PlatformRegistrationsPage },
         ],
     },
+    { path: '/school/register', name: 'school-register', component: SchoolRegisterPage, meta: { standalone: true, hideNav: true } },
+    { path: '/invite/admin/:token', name: 'admin-invite', component: AdminInviteAcceptPage, props: true, meta: { standalone: true, hideNav: true } },
     { path: '/notices', name: 'notices', component: NoticesPage },
     { path: '/calendar', name: 'calendar', component: CalendarPage },
     { path: '/messages', name: 'messages', component: MessagesPage },
@@ -49,6 +63,10 @@ const routes = [
     { path: '/driver', name: 'driver', component: DriverTripPage },
     { path: '/admin/import', name: 'admin-import', component: AdminImportPage },
     { path: '/admin/notices/create', name: 'admin-notice-create', component: AdminCreateNoticePage },
+    { path: '/admin/school', name: 'admin-school', component: AdminSchoolPage },
+    { path: '/admin/classes', name: 'admin-classes', component: AdminClassesPage },
+    { path: '/admin/staff', name: 'admin-staff', component: AdminStaffPage },
+    { path: '/admin/students', name: 'admin-students', component: AdminStudentsPage },
     { path: '/n/:token', name: 'notice-magic', component: NoticePage, props: true, meta: { hideNav: true } },
 ];
 
@@ -112,7 +130,7 @@ router.beforeEach(async (to) => {
         return { name: 'platform-dashboard' };
     }
 
-    if (isAuthenticated.value && to.name !== 'home' && to.name !== 'login' && to.name !== 'notice-magic' && !to.meta.platformLayout && to.name !== 'platform-login') {
+    if (isAuthenticated.value && to.name !== 'home' && to.name !== 'login' && to.name !== 'notice-magic' && !to.meta.platformLayout && to.name !== 'platform-login' && !to.meta.standalone) {
         if (!canAccessRoute(to.name)) {
             return { name: defaultRouteForRole() };
         }

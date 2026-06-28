@@ -26,6 +26,7 @@ class PlatformController extends Controller
             'stats' => [
                 'schools' => School::query()->count(),
                 'active_schools' => School::query()->where('is_active', true)->count(),
+                'pending_registrations' => School::query()->where('approval_status', School::APPROVAL_PENDING)->count(),
                 'users' => User::query()->count(),
                 'students' => Student::query()->count(),
                 'notices' => Notice::query()->count(),
@@ -58,6 +59,7 @@ class PlatformController extends Controller
             'district' => $school->district,
             'type' => $school->type,
             'is_active' => $school->is_active,
+            'approval_status' => $school->approval_status,
             'whatsapp_bridge_enabled' => $school->whatsapp_bridge_enabled,
             'students_count' => $school->students_count ?? 0,
             'users_count' => $school->users_count ?? 0,

@@ -1,7 +1,14 @@
 <?php
 
 use App\Http\Controllers\Platform\PlatformController;
+use App\Http\Controllers\Platform\PlatformSchoolController;
+use App\Http\Controllers\Platform\SchoolAdminInviteController;
+use App\Http\Controllers\Platform\SchoolRegistrationController;
+use App\Http\Controllers\Admin\SchoolClassManagementController;
+use App\Http\Controllers\Admin\SchoolProfileController;
 use App\Http\Controllers\Admin\SchoolSetupController;
+use App\Http\Controllers\Admin\SchoolStaffController;
+use App\Http\Controllers\Admin\SchoolStudentController;
 use App\Http\Controllers\Alumni\AlumniController;
 use App\Http\Controllers\Auth\OtpAuthController;
 use App\Http\Controllers\Calendar\CalendarController;
@@ -20,6 +27,9 @@ Route::prefix('api')->group(function () {
     Route::post('auth/otp/request', [OtpAuthController::class, 'requestOtp']);
     Route::post('auth/otp/verify', [OtpAuthController::class, 'verifyOtp']);
 
+    Route::post('schools/register', [SchoolRegistrationController::class, 'store']);
+    Route::get('invites/admin/{token}', [SchoolAdminInviteController::class, 'show']);
+
     Route::get('admin/import/sample.csv', [SchoolSetupController::class, 'downloadSample']);
 
     Route::middleware('auth')->group(function () {
@@ -27,6 +37,7 @@ Route::prefix('api')->group(function () {
         Route::post('auth/logout', [OtpAuthController::class, 'logout']);
         Route::get('notices/magic/{token}', [MagicLinkNoticeController::class, 'show']);
         Route::post('notices/magic/{token}/read', [MagicLinkNoticeController::class, 'markRead']);
+        Route::post('invites/admin/{token}/accept', [SchoolAdminInviteController::class, 'accept']);
 
         Route::middleware('role:parent,grandparent,school_admin,teacher,smc_member,student,alumni,super_admin')->group(function () {
             Route::get('notices', [NoticeController::class, 'index']);
@@ -49,7 +60,26 @@ Route::prefix('api')->group(function () {
         });
 
         Route::middleware('role:school_admin,super_admin')->group(function () {
+            Route::get('admin/school', [SchoolProfileController::class, 'show']);
+            Route::put('admin/school', [SchoolProfileController::class, 'update']);
+            Route::get('admin/invites', [SchoolProfileController::class, 'invites']);
+            Route::post('admin/invites', [SchoolProfileController::class, 'storeInvite']);
             Route::get('admin/classes', [SchoolSetupController::class, 'classes']);
+            Route::post('admin/classes', [SchoolClassManagementController::class, 'storeClass']);
+            Route::put('admin/classes/{schoolClass}', [SchoolClassManagementController::class, 'updateClass']);
+            Route::delete('admin/classes/{schoolClass}', [SchoolClassManagementController::class, 'destroyClass']);
+            Route::post('admin/classes/{schoolClass}/sections', [SchoolClassManagementController::class, 'storeSection']);
+            Route::put('admin/sections/{section}', [SchoolClassManagementController::class, 'updateSection']);
+            Route::delete('admin/sections/{section}', [SchoolClassManagementController::class, 'destroySection']);
+            Route::get('admin/staff', [SchoolStaffController::class, 'index']);
+            Route::post('admin/staff', [SchoolStaffController::class, 'store']);
+            Route::delete('admin/staff/{user}', [SchoolStaffController::class, 'destroy']);
+            Route::get('admin/students', [SchoolStudentController::class, 'index']);
+            Route::get('admin/students/{student}', [SchoolStudentController::class, 'show']);
+            Route::put('admin/students/{student}', [SchoolStudentController::class, 'update']);
+            Route::post('admin/students/{student}/parents', [SchoolStudentController::class, 'attachParent']);
+            Route::put('admin/students/{student}/parents/{parent}', [SchoolStudentController::class, 'updateParent']);
+            Route::delete('admin/students/{student}/parents/{parent}', [SchoolStudentController::class, 'detachParent']);
             Route::post('notices', [NoticeController::class, 'store']);
             Route::put('notices/{notice}', [NoticeController::class, 'update']);
             Route::post('notices/{notice}/publish', [NoticeController::class, 'publish']);
@@ -102,6 +132,12 @@ Route::prefix('api')->group(function () {
         Route::middleware('role:super_admin')->prefix('platform')->group(function () {
             Route::get('dashboard', [PlatformController::class, 'dashboard']);
             Route::get('schools', [PlatformController::class, 'schools']);
+            Route::post('schools', [PlatformSchoolController::class, 'store']);
+            Route::get('schools/{school}', [PlatformSchoolController::class, 'show']);
+            Route::get('registrations', [PlatformSchoolController::class, 'registrations']);
+            Route::post('schools/{school}/approve', [PlatformSchoolController::class, 'approve']);
+            Route::post('schools/{school}/reject', [PlatformSchoolController::class, 'reject']);
+            Route::post('schools/{school}/invites', [PlatformSchoolController::class, 'storeInvite']);
         });
     });
 });

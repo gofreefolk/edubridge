@@ -33,6 +33,36 @@
             </router-link>
         </div>
 
+        <div>
+            <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ t('admin.setupTitle') }}</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <router-link
+                    :to="{ name: 'admin-school' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800"
+                >
+                    🏫 {{ t('admin.schoolProfileShort') }}
+                </router-link>
+                <router-link
+                    :to="{ name: 'admin-classes' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800"
+                >
+                    📚 {{ t('admin.classesShort') }}
+                </router-link>
+                <router-link
+                    :to="{ name: 'admin-staff' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800"
+                >
+                    👥 {{ t('admin.staffShort') }}
+                </router-link>
+                <router-link
+                    :to="{ name: 'admin-students' }"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800"
+                >
+                    🎒 {{ t('admin.studentsShort') }}
+                </router-link>
+            </div>
+        </div>
+
         <p class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             {{ t('admin.publishHint') }}
         </p>

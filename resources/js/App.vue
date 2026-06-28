@@ -3,6 +3,7 @@
         <router-view />
     </PlatformShell>
     <PlatformLoginPage v-else-if="isPlatformLogin" />
+    <router-view v-else-if="isStandalone" />
     <AppShell v-else>
         <router-view />
     </AppShell>
@@ -19,4 +20,5 @@ const route = useRoute();
 
 const usePlatformLayout = computed(() => route.meta.platformLayout === true);
 const isPlatformLogin = computed(() => route.name === 'platform-login');
+const isStandalone = computed(() => route.meta.standalone === true);
 </script>

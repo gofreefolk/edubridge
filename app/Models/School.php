@@ -4,12 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class School extends Model
 {
+    public const APPROVAL_PENDING = 'pending';
+
+    public const APPROVAL_APPROVED = 'approved';
+
+    public const APPROVAL_REJECTED = 'rejected';
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -20,6 +26,12 @@ class School extends Model
         'whatsapp_bridge_enabled',
         'settings',
         'is_active',
+        'approval_status',
+        'admin_contact_name',
+        'admin_contact_phone',
+        'rejection_reason',
+        'reviewed_at',
+        'reviewed_by_user_id',
     ];
 
     protected function casts(): array
@@ -28,6 +40,7 @@ class School extends Model
             'whatsapp_bridge_enabled' => 'boolean',
             'settings' => 'array',
             'is_active' => 'boolean',
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -61,5 +74,20 @@ class School extends Model
     public function smcMembers(): HasMany
     {
         return $this->hasMany(SmcMember::class);
+    }
+
+    public function adminInvites(): HasMany
+    {
+        return $this->hasMany(SchoolAdminInvite::class);
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by_user_id');
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approval_status === self::APPROVAL_APPROVED;
     }
 }

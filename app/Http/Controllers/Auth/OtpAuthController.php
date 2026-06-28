@@ -8,6 +8,7 @@ use App\Models\TimetableSlot;
 use App\Http\Requests\Auth\RequestOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Services\Auth\OtpService;
+use App\Services\Platform\SchoolOnboardingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,7 @@ class OtpAuthController extends Controller
 {
     public function __construct(
         private readonly OtpService $otpService,
+        private readonly SchoolOnboardingService $onboarding,
     ) {}
 
     public function requestOtp(RequestOtpRequest $request): JsonResponse
@@ -52,15 +54,21 @@ class OtpAuthController extends Controller
         Auth::login($user, remember: true);
         $request->session()->regenerate();
 
+        $user = $user->fresh();
+        $this->onboarding->acceptPendingInviteForUser($user);
+
         return response()->json([
-            'user' => $this->userPayload($user),
+            'user' => $this->userPayload($user->fresh()),
         ]);
     }
 
     public function me(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $this->onboarding->acceptPendingInviteForUser($user);
+
         return response()->json([
-            'user' => $this->userPayload($request->user()),
+            'user' => $this->userPayload($user->fresh()),
         ]);
     }
 
