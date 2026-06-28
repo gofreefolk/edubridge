@@ -126,10 +126,12 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useAuth } from '@/composables/useAuth';
+import { useRole } from '@/composables/useRole';
 import { useSchoolContext } from '@/composables/useSchoolContext';
 
 const { t, locale } = useI18n();
 const { user, isAuthenticated } = useAuth();
+const { activeRole } = useRole();
 const { activeSchoolId, activeStudentId } = useSchoolContext();
 
 const loading = ref(false);

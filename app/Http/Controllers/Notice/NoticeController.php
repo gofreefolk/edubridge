@@ -187,7 +187,7 @@ class NoticeController extends Controller
                 ? $notice->attachments->map(fn ($a) => [
                     'id' => $a->id,
                     'filename' => $a->filename,
-                    'url' => asset('storage/'.$a->path),
+                    'url' => $a->url(),
                 ])
                 : [],
         ];

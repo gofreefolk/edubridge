@@ -16,4 +16,9 @@ return [
         'max_attempts' => 5,
         'dev_code' => env('EDUBRIDGE_OTP_DEV_CODE'),
     ],
+    'attachments' => [
+        'disk' => env('EDUBRIDGE_ATTACHMENTS_DISK', 'public'),
+        'visibility' => env('EDUBRIDGE_ATTACHMENTS_VISIBILITY', 'private'),
+        'temporary_url_minutes' => (int) env('EDUBRIDGE_ATTACHMENTS_URL_TTL', 60),
+    ],
 ];

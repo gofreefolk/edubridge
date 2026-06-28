@@ -1,7 +1,7 @@
 <template>
     <div class="flex min-h-dvh flex-col bg-slate-50 text-slate-900">
-        <header class="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div class="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
+        <header class="sticky top-0 z-10 overflow-visible border-b border-slate-200 bg-white/95 backdrop-blur">
+            <div class="mx-auto flex max-w-lg items-center justify-between gap-3 overflow-visible px-4 py-3">
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-lg font-semibold text-blue-800">
                         {{ t('app.name') }}
@@ -16,7 +16,7 @@
                         <RoleSwitcher />
                     </div>
                 </div>
-                <div class="flex shrink-0 items-center gap-2">
+                <div class="flex shrink-0 items-center gap-2 overflow-visible">
                     <NotificationBell v-if="isAuthenticated" />
                     <router-link
                         v-if="!isAuthenticated"

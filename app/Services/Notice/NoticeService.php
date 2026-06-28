@@ -8,13 +8,16 @@ use App\Models\NoticeAudience;
 use App\Models\NoticeAttachment;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\Storage\AttachmentStorageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class NoticeService
 {
+    public function __construct(
+        private readonly AttachmentStorageService $attachmentStorage,
+    ) {}
     public function create(User $author, array $data): Notice
     {
         return DB::transaction(function () use ($author, $data) {
@@ -225,15 +228,7 @@ class NoticeService
 
     public function attachFile(Notice $notice, UploadedFile $file): NoticeAttachment
     {
-        $path = $file->store("notices/{$notice->school_id}/{$notice->id}", 'public');
-
-        return NoticeAttachment::query()->create([
-            'notice_id' => $notice->id,
-            'filename' => $file->getClientOriginalName(),
-            'path' => $path,
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-        ]);
+        return $this->attachmentStorage->store($notice, $file);
     }
 
     public function forParent(User $user, int $schoolId, ?int $studentId = null)
