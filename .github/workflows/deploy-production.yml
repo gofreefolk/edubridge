@@ -80,6 +80,9 @@ jobs:
         with:
           name: release
 
+      - name: Show runner public IP
+        run: curl -s https://api.ipify.org
+
       - name: Upload release to server
         uses: appleboy/scp-action@v0.1.7
         with:
