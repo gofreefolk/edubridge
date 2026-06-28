@@ -46,6 +46,22 @@ php artisan serve
 
 All routes under `/api` — session auth via OTP login.
 
+## Production deploy (GitHub Actions)
+
+Pushes to `main` run tests, build assets, and deploy over SSH.
+
+**GitHub secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `PRODUCTION_HOST` | Server hostname or IP |
+| `PRODUCTION_USER` | SSH user (e.g. `deploy`) |
+| `PRODUCTION_PATH` | App root (e.g. `/var/www/edubridge`) |
+| `SSH_PRIVATE_KEY` | Full PEM private key (including `BEGIN`/`END` lines) |
+
+One-time server setup: `bash scripts/server-init.sh` then place `.env` at `shared/.env`.  
+Web root: `{PRODUCTION_PATH}/current/public`
+
 ## License
 
 MIT
