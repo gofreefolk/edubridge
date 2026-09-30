@@ -20,6 +20,11 @@ return [
         // Fixed code for local development only; ignored outside local/testing.
         'dev_code' => env('EDUBRIDGE_OTP_DEV_CODE'),
     ],
+    'fees' => [
+        'reminder_days_before' => (int) env('EDUBRIDGE_FEE_REMINDER_DAYS_BEFORE', 3),
+        'overdue_every_days' => (int) env('EDUBRIDGE_FEE_OVERDUE_EVERY_DAYS', 7),
+        'overdue_stop_after_days' => (int) env('EDUBRIDGE_FEE_OVERDUE_STOP_AFTER_DAYS', 60),
+    ],
     'attachments' => [
         'disk' => env('EDUBRIDGE_ATTACHMENTS_DISK', 'public'),
         'visibility' => env('EDUBRIDGE_ATTACHMENTS_VISIBILITY', 'private'),

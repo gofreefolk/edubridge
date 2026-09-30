@@ -17,6 +17,9 @@ use App\Http\Controllers\Comms\NotificationSummaryController;
 use App\Http\Controllers\Comms\WhatsAppOptInController;
 use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\Feedback\FeedbackController;
+use App\Http\Controllers\Fees\FeeInvoiceController;
+use App\Http\Controllers\Fees\FeeReportController;
+use App\Http\Controllers\Fees\FeeSetupController;
 use App\Http\Controllers\Notice\MagicLinkNoticeController;
 use App\Http\Controllers\Notice\NoticeController;
 use App\Http\Controllers\Operations\AttendanceController;
@@ -67,6 +70,11 @@ Route::prefix('api')->group(function () {
         Route::put('checklists/{template}', [ChecklistController::class, 'updateTemplate']);
         Route::post('checklists/{template}/submit', [ChecklistController::class, 'submit']);
         Route::get('checklists/report', [ChecklistController::class, 'report']);
+
+        // Fees visible to the office and the student's own family; checked in the controller.
+        Route::get('fees/students/{student}', [FeeInvoiceController::class, 'ledger']);
+        Route::get('fees/invoices/{invoice}', [FeeInvoiceController::class, 'show']);
+        Route::get('fees/payments/{payment}/receipt', [FeeInvoiceController::class, 'receipt']);
 
         Route::middleware('role:parent,grandparent,school_admin,teacher,smc_member,student,alumni,super_admin')->group(function () {
             Route::get('notices', [NoticeController::class, 'index']);
@@ -126,6 +134,24 @@ Route::prefix('api')->group(function () {
             Route::post('smc/meetings', [SmcController::class, 'storeMeeting']);
             Route::put('smc/meetings/{meeting}/minutes', [SmcController::class, 'updateMeetingMinutes']);
             Route::post('admin/import/parents', [SchoolSetupController::class, 'importParents']);
+
+            Route::get('fees/setup', [FeeSetupController::class, 'show']);
+            Route::post('fees/heads', [FeeSetupController::class, 'storeHead']);
+            Route::put('fees/heads/{head}', [FeeSetupController::class, 'updateHead']);
+            Route::post('fees/structures', [FeeSetupController::class, 'storeStructure']);
+            Route::put('fees/structures/{structure}', [FeeSetupController::class, 'updateStructure']);
+            Route::delete('fees/structures/{structure}', [FeeSetupController::class, 'destroyStructure']);
+            Route::put('fees/numbering', [FeeSetupController::class, 'updateNumbering']);
+            Route::get('fees/students/{student}/concessions', [FeeSetupController::class, 'concessions']);
+            Route::post('fees/students/{student}/concessions', [FeeSetupController::class, 'storeConcession']);
+            Route::delete('fees/students/{student}/concessions/{concession}', [FeeSetupController::class, 'destroyConcession']);
+            Route::get('fees/invoices', [FeeInvoiceController::class, 'index']);
+            Route::post('fees/invoices/generate', [FeeInvoiceController::class, 'generate']);
+            Route::post('fees/invoices/{invoice}/void', [FeeInvoiceController::class, 'void']);
+            Route::post('fees/invoices/{invoice}/payments', [FeeInvoiceController::class, 'storePayment']);
+            Route::post('fees/payments/{payment}/void', [FeeInvoiceController::class, 'voidPayment']);
+            Route::get('fees/reports/collections', [FeeReportController::class, 'collections']);
+            Route::get('fees/reports/outstanding', [FeeReportController::class, 'outstanding']);
         });
 
         Route::middleware('role:teacher,school_admin,super_admin')->group(function () {

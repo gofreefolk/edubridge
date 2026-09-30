@@ -30,6 +30,12 @@ import StudentProfilePage from '@/pages/StudentProfilePage.vue';
 import AttendanceReportPage from '@/pages/AttendanceReportPage.vue';
 import CentreLogPage from '@/pages/CentreLogPage.vue';
 import ChecklistsPage from '@/pages/ChecklistsPage.vue';
+import FeesPage from '@/pages/FeesPage.vue';
+import FeeSetupPage from '@/pages/FeeSetupPage.vue';
+import FeeReportsPage from '@/pages/FeeReportsPage.vue';
+import FeeInvoicePage from '@/pages/FeeInvoicePage.vue';
+import FeeReceiptPage from '@/pages/FeeReceiptPage.vue';
+import StudentFeesPage from '@/pages/StudentFeesPage.vue';
 import { useAuth } from '@/composables/useAuth';
 import { useRole } from '@/composables/useRole';
 import { applyUserLocale, setLocale } from '@/i18n';
@@ -77,6 +83,12 @@ const routes = [
     { path: '/attendance/report', name: 'attendance-report', component: AttendanceReportPage },
     { path: '/logs', name: 'centre-logs', component: CentreLogPage },
     { path: '/checklists', name: 'checklists', component: ChecklistsPage },
+    { path: '/fees', name: 'fees', component: FeesPage },
+    { path: '/fees/setup', name: 'fee-setup', component: FeeSetupPage },
+    { path: '/fees/reports', name: 'fee-reports', component: FeeReportsPage },
+    { path: '/fees/invoices/:id', name: 'fee-invoice', component: FeeInvoicePage, props: true },
+    { path: '/fees/receipts/:id', name: 'fee-receipt', component: FeeReceiptPage, props: true, meta: { hideNav: true } },
+    { path: '/students/:id/fees', name: 'student-fees', component: StudentFeesPage, props: true },
     { path: '/n/:token', name: 'notice-magic', component: NoticePage, props: true, meta: { hideNav: true } },
 ];
 

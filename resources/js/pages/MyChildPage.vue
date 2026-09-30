@@ -41,6 +41,9 @@
                 <router-link :to="{ name: 'centre-logs', query: { student_id: activeStudent.id } }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
                     📓 {{ t('ops.logsTitle') }}
                 </router-link>
+                <router-link :to="{ name: 'student-fees', params: { id: activeStudent.id } }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                    💰 {{ t('fees.title') }}
+                </router-link>
             </div>
 
             <router-link :to="{ name: 'smc' }" class="block rounded-2xl border border-blue-200 bg-blue-50 p-4 font-semibold text-blue-800">

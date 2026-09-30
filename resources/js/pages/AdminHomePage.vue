@@ -58,6 +58,14 @@
                         </p>
                     </router-link>
 
+                    <router-link v-if="summary.fees" :to="{ name: 'fee-reports' }" class="rounded-2xl border bg-white p-3" :class="summary.fees.overdue_paise ? 'border-red-200' : 'border-slate-200'">
+                        <p class="text-2xl font-bold text-slate-900">{{ formatRupees(summary.fees.collected_paise) }}</p>
+                        <p class="text-xs text-slate-500">{{ t('dashboard.feesToday') }}</p>
+                        <p v-if="summary.fees.overdue_paise" class="mt-1 text-xs font-semibold text-red-700">
+                            {{ t('dashboard.feesOverdue', { amount: formatRupees(summary.fees.overdue_paise), count: summary.fees.overdue_invoices }) }}
+                        </p>
+                    </router-link>
+
                     <div class="rounded-2xl border border-slate-200 bg-white p-3">
                         <p class="text-2xl font-bold text-slate-900">
                             {{ summary.adoption.percent ?? '—' }}<span v-if="summary.adoption.percent !== null" class="text-base">%</span>
@@ -123,6 +131,9 @@
                 <router-link :to="{ name: 'checklists' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
                     ✅ {{ t('ops.checklistsTitle') }}
                 </router-link>
+                <router-link :to="{ name: 'fees' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                    💰 {{ t('fees.title') }}
+                </router-link>
             </div>
         </div>
 
@@ -173,6 +184,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useSchoolContext } from '@/composables/useSchoolContext';
+import { formatRupees } from '@/utils/money';
 
 const { t } = useI18n();
 const { schools, activeSchoolId } = useSchoolContext();

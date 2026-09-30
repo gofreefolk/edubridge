@@ -70,9 +70,15 @@ Not cached yet (aggregate queries only); add caching if it gets slow on large sc
 
 **Done when:** admin opens the app and sees today's school at a glance; numbers match the module pages.
 
-## Phase 2 — Fee management (L)
+## Phase 2 — Fee management (L) — built (v1)
 
 Highest commercial value for unaided / CBSE / preschool customers.
+
+**Decided:** invoice and receipt numbers are configurable per school (format tokens
+`{SEQ:n}`, `{AY}`, `{YYYY}`, `{YY}`, `{MM}`, `{CODE}`; counter restarts per academic year,
+per calendar year or never; admin can set the next number). No late fees in v1. Online
+payment is Phase 2b; v1 records cash / UPI / bank / cheque at the office.
+Reminder timing is set in `config/edubridge.php` (`fees.*`), not per school yet.
 
 **Tables (migration `000021`)**
 - `fee_heads` — school_id, name (Tuition, Bus, PTA, Books…), is_active.
@@ -106,10 +112,6 @@ Highest commercial value for unaided / CBSE / preschool customers.
 **Phase 2b (later):** online payment via Razorpay/UPI — payment link on invoice, webhook
 records `fee_payments` with `method=online`, idempotent on gateway payment id.
 
-**Decisions needed before starting**
-- Receipt / invoice number format (per year? prefix?).
-- Late fee rules — in v1 or not?
-- Online payments in v1, or cash/UPI-recorded-by-office only?
 
 ## Phase 3 — Check in / check out (M)
 

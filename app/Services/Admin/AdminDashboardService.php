@@ -7,6 +7,8 @@ use App\Models\CentreLog;
 use App\Models\ChecklistSubmission;
 use App\Models\ChecklistTemplate;
 use App\Models\FeedbackThread;
+use App\Models\FeeInvoice;
+use App\Models\FeePayment;
 use App\Models\Notice;
 use App\Models\NotificationLog;
 use App\Models\School;
@@ -41,6 +43,34 @@ class AdminDashboardService
             'centre_logs' => $this->centreLogs($school, $date),
             'adoption' => $this->adoption($school),
             'delivery' => $this->delivery($school, $date),
+            'fees' => $this->fees($school, $date),
+        ];
+    }
+
+    /**
+     * Null until the school issues its first invoice, so schools without fees see no tile.
+     */
+    private function fees(School $school, Carbon $date): ?array
+    {
+        if (! FeeInvoice::query()->where('school_id', $school->id)->exists()) {
+            return null;
+        }
+
+        $overdue = FeeInvoice::query()
+            ->where('school_id', $school->id)
+            ->whereIn('status', ['issued', 'partially_paid'])
+            ->whereDate('due_on', '<', $date->toDateString())
+            ->selectRaw('count(*) as invoices, coalesce(sum(total_paise - discount_paise - paid_paise), 0) as balance')
+            ->first();
+
+        return [
+            'collected_paise' => (int) FeePayment::query()
+                ->where('school_id', $school->id)
+                ->whereNull('voided_at')
+                ->whereBetween('paid_at', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
+                ->sum('amount_paise'),
+            'overdue_invoices' => (int) $overdue->invoices,
+            'overdue_paise' => (int) $overdue->balance,
         ];
     }
 

@@ -95,6 +95,12 @@ export const ROUTE_ROLES = {
     'attendance-report': ['teacher', 'school_admin', 'super_admin'],
     'centre-logs': ['teacher', 'school_admin', 'parent', 'grandparent', 'super_admin'],
     checklists: ['teacher', 'school_admin', 'transport_staff', 'super_admin'],
+    fees: ['school_admin', 'super_admin'],
+    'fee-setup': ['school_admin', 'super_admin'],
+    'fee-reports': ['school_admin', 'super_admin'],
+    'fee-invoice': ['school_admin', 'super_admin'],
+    'fee-receipt': ['school_admin', 'parent', 'grandparent', 'student', 'super_admin'],
+    'student-fees': ['school_admin', 'parent', 'grandparent', 'student', 'super_admin'],
 };
 
 export function resolvePrimaryRole(roles) {

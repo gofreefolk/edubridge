@@ -49,5 +49,16 @@ return [
     'range_too_long' => 'Please choose a date range of one year or less.',
     'student_required' => 'Choose the student this message is about.',
     'student_has_no_parent' => 'No parent is linked to this student yet.',
+    'fee_receipt' => ':school: received ₹:amount for :student (:label). Receipt :receipt. Balance due: ₹:balance.',
+    'fee_reminder' => ':school: fee of ₹:balance for :student (:label, invoice :invoice) is due on :due. Please pay at the school office.',
+    'fee_overdue' => ':school: fee of ₹:balance for :student (:label, invoice :invoice) was due on :due and is still unpaid. Please pay at the school office.',
+    'fee_no_structures' => 'No fee structure is set up for this billing period yet.',
+    'fee_invoice_void' => 'This invoice has been voided.',
+    'fee_payment_exceeds_balance' => 'The amount must be more than zero and not more than the balance due.',
+    'fee_already_void' => 'This has already been voided.',
+    'fee_invoice_has_payments' => 'Void the payments on this invoice first.',
+    'fee_number_needs_seq' => 'The number format must contain {SEQ} (or {SEQ:4} for a zero-padded counter) exactly once.',
+    'fee_number_bad_format' => 'Use only letters, digits, space, / - _ . # and the tokens {SEQ}, {SEQ:n}, {YYYY}, {YY}, {MM}, {AY}, {CODE}.',
+    'fee_number_exhausted' => 'Could not find a free number with this format. Change the format or the next number.',
 
 ];
