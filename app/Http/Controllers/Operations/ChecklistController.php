@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Operations;
 
 use App\Http\Controllers\Concerns\AuthorizesSchoolAdmin;
+use App\Http\Controllers\Concerns\RespondsWithCsv;
 use App\Http\Controllers\Controller;
 use App\Models\ChecklistSubmission;
 use App\Models\ChecklistTemplate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Recurring operational checklists (e.g. morning safety walk, weekly hygiene check).
@@ -17,6 +19,7 @@ use Illuminate\Support\Carbon;
 class ChecklistController extends Controller
 {
     use AuthorizesSchoolAdmin;
+    use RespondsWithCsv;
 
     private const STAFF_ROLES = ['school_admin', 'teacher', 'transport_staff'];
 
@@ -139,12 +142,13 @@ class ChecklistController extends Controller
     /**
      * Completion per checklist over a date range, with the periods that were missed.
      */
-    public function report(Request $request): JsonResponse
+    public function report(Request $request): JsonResponse|StreamedResponse
     {
         $data = $request->validate([
             'school_id' => ['required', 'integer', 'exists:schools,id'],
             'from' => ['required', 'date'],
             'to' => ['required', 'date', 'after_or_equal:from', 'before_or_equal:today'],
+            'format' => ['nullable', 'in:json,csv'],
         ]);
 
         $school = $this->schoolForAdmin($request->user(), (int) $data['school_id']);
@@ -161,26 +165,39 @@ class ChecklistController extends Controller
             ->get()
             ->groupBy('checklist_template_id');
 
+        $rows = $templates->map(function (ChecklistTemplate $t) use ($from, $to, $submissions) {
+            $expected = $this->expectedPeriods($t, $from, $to);
+            $done = $submissions->get($t->id, collect())
+                ->map(fn ($s) => $s->period_date->toDateString());
+            $completed = array_values(array_intersect($expected, $done->all()));
+            $missed = array_values(array_diff($expected, $done->all()));
+
+            return [
+                'id' => $t->id,
+                'name' => $t->name,
+                'frequency' => $t->frequency,
+                'expected' => count($expected),
+                'completed' => count($completed),
+                'percent' => count($expected) ? round(count($completed) / count($expected) * 100, 1) : null,
+                'missed' => array_slice($missed, -31),
+            ];
+        });
+
+        if (($data['format'] ?? 'json') === 'csv') {
+            return $this->csv(
+                "checklists-{$from->toDateString()}-{$to->toDateString()}.csv",
+                ['Checklist', 'Frequency', 'Expected', 'Completed', 'Completion %', 'Missed (latest 31)'],
+                $rows->map(fn ($r) => [
+                    $r['name'], $r['frequency'], $r['expected'], $r['completed'],
+                    $r['percent'], implode(' ', $r['missed']),
+                ]),
+            );
+        }
+
         return response()->json([
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
-            'checklists' => $templates->map(function (ChecklistTemplate $t) use ($from, $to, $submissions) {
-                $expected = $this->expectedPeriods($t, $from, $to);
-                $done = $submissions->get($t->id, collect())
-                    ->map(fn ($s) => $s->period_date->toDateString());
-                $completed = array_values(array_intersect($expected, $done->all()));
-                $missed = array_values(array_diff($expected, $done->all()));
-
-                return [
-                    'id' => $t->id,
-                    'name' => $t->name,
-                    'frequency' => $t->frequency,
-                    'expected' => count($expected),
-                    'completed' => count($completed),
-                    'percent' => count($expected) ? round(count($completed) / count($expected) * 100, 1) : null,
-                    'missed' => array_slice($missed, -31),
-                ];
-            }),
+            'checklists' => $rows,
         ]);
     }
 

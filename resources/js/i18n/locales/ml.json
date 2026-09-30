@@ -434,6 +434,26 @@
         "showReport": "റിപ്പോർട്ട് കാണുക",
         "missed": "വിട്ടുപോയത്",
         "searchStudent": "വിദ്യാർത്ഥിയെ തിരയുക",
-        "chooseStudent": "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക"
+        "chooseStudent": "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക",
+        "downloadCsv": "CSV ഡൗൺലോഡ് ചെയ്യുക"
+    },
+    "dashboard": {
+        "today": "ഇന്നത്തെ ചുരുക്കം",
+        "attendance": "ഇന്നത്തെ ഹാജർ",
+        "markedOf": "{total} ൽ {marked} രേഖപ്പെടുത്തി",
+        "absentToday": "{count} പേർ ഹാജരില്ല",
+        "noticeReads": "അറിയിപ്പ് വായന നിരക്ക്",
+        "noticesThisWeek": "7 ദിവസത്തിൽ {count} അറിയിപ്പ്",
+        "scheduled": "{count} ഷെഡ്യൂൾ ചെയ്തു",
+        "openFeedback": "തുറന്ന സന്ദേശങ്ങൾ",
+        "oldestDays": "ഏറ്റവും പഴയത് {days} ദിവസമായി കാത്തിരിക്കുന്നു",
+        "checklistsDone": "പൂർത്തിയായ ചെക്ക്‌ലിസ്റ്റുകൾ",
+        "incidentsWeek": "7 ദിവസത്തിലെ സംഭവങ്ങൾ",
+        "healthWeek": "{count} ആരോഗ്യ കുറിപ്പ്",
+        "adoption": "രക്ഷിതാക്കളുടെ ഉപയോഗം",
+        "adoptionDetail": "{parents} രക്ഷിതാക്കളിൽ {readers} പേർ അറിയിപ്പ് വായിച്ചു",
+        "unmarkedClasses": "ഹാജർ ഇതുവരെ രേഖപ്പെടുത്തിയില്ല: ക്ലാസ് {classes}",
+        "pendingChecklists": "ബാക്കിയുള്ള ചെക്ക്‌ലിസ്റ്റുകൾ: {names}",
+        "deliveryFailed": "കഴിഞ്ഞ 24 മണിക്കൂറിൽ {count} WhatsApp/SMS സന്ദേശം പരാജയപ്പെട്ടു. ഗേറ്റ്‌വേ പരിശോധിക്കുക."
     }
 }

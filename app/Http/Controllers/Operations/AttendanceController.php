@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operations;
 
 use App\Http\Controllers\Concerns\AuthorizesSchoolAdmin;
+use App\Http\Controllers\Concerns\RespondsWithCsv;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceRecord;
 use App\Models\SchoolClass;
@@ -10,10 +11,12 @@ use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttendanceController extends Controller
 {
     use AuthorizesSchoolAdmin;
+    use RespondsWithCsv;
 
     private const STAFF_ROLES = ['teacher', 'school_admin'];
 
@@ -59,12 +62,13 @@ class AttendanceController extends Controller
     /**
      * Month summary for a class: per-student counts and attendance %, plus daily totals.
      */
-    public function report(Request $request): JsonResponse
+    public function report(Request $request): JsonResponse|StreamedResponse
     {
         $data = $request->validate([
             'school_class_id' => ['required', 'integer'],
             'section_id' => ['nullable', 'integer'],
             'month' => ['required', 'date_format:Y-m'],
+            'format' => ['nullable', 'in:json,csv'],
         ]);
 
         $class = SchoolClass::query()->findOrFail($data['school_class_id']);
@@ -78,7 +82,10 @@ class AttendanceController extends Controller
 
         $records = AttendanceRecord::query()
             ->whereIn('student_id', $students->pluck('id'))
-            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            // whereDate: SQLite stores the cast date with a time part, which a plain
+            // BETWEEN would drop on the last day of the month.
+            ->whereDate('date', '>=', $start->toDateString())
+            ->whereDate('date', '<=', $end->toDateString())
             ->get(['student_id', 'date', 'status']);
 
         $byStudent = $records->groupBy('student_id');
@@ -96,6 +103,7 @@ class AttendanceController extends Controller
             return [
                 'id' => $s->id,
                 'name' => $s->name,
+                'admission_number' => $s->admission_number,
                 ...$counts,
                 'marked_days' => $marked,
                 'percent' => $marked > 0 ? round($attended / $marked * 100, 1) : null,
@@ -112,6 +120,17 @@ class AttendanceController extends Controller
             ])
             ->sortKeys()
             ->values();
+
+        if (($data['format'] ?? 'json') === 'csv') {
+            return $this->csv(
+                "attendance-{$class->name}-{$data['month']}.csv",
+                ['Student', 'Admission no.', 'Present', 'Late', 'Absent', 'Excused', 'Marked days', 'Attendance %'],
+                $rows->map(fn ($r) => [
+                    $r['name'], $r['admission_number'], $r['present'], $r['late'],
+                    $r['absent'], $r['excused'], $r['marked_days'], $r['percent'],
+                ]),
+            );
+        }
 
         $totalMarked = $rows->sum('marked_days');
         $totalAttended = $rows->sum('present') + $rows->sum('late');

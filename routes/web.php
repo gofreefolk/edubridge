@@ -4,6 +4,7 @@ use App\Http\Controllers\Platform\PlatformController;
 use App\Http\Controllers\Platform\PlatformSchoolController;
 use App\Http\Controllers\Platform\SchoolAdminInviteController;
 use App\Http\Controllers\Platform\SchoolRegistrationController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\SchoolClassManagementController;
 use App\Http\Controllers\Admin\SchoolProfileController;
 use App\Http\Controllers\Admin\SchoolSetupController;
@@ -94,6 +95,7 @@ Route::prefix('api')->group(function () {
         });
 
         Route::middleware('role:school_admin,super_admin')->group(function () {
+            Route::get('admin/dashboard', [AdminDashboardController::class, 'show']);
             Route::get('admin/school', [SchoolProfileController::class, 'show']);
             Route::put('admin/school', [SchoolProfileController::class, 'update']);
             Route::get('admin/invites', [SchoolProfileController::class, 'invites']);

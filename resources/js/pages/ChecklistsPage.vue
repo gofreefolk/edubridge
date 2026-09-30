@@ -75,7 +75,10 @@
                     <label class="text-xs text-slate-600">{{ t('ops.from') }}<input v-model="reportFrom" type="date" :max="todayIso" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" /></label>
                     <label class="text-xs text-slate-600">{{ t('ops.to') }}<input v-model="reportTo" type="date" :max="todayIso" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" /></label>
                 </div>
-                <button type="button" class="w-full rounded-lg border border-blue-300 bg-blue-50 py-2 text-sm font-semibold text-blue-800" @click="loadReport">{{ t('ops.showReport') }}</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" class="rounded-lg border border-blue-300 bg-blue-50 py-2 text-sm font-semibold text-blue-800" @click="loadReport">{{ t('ops.showReport') }}</button>
+                    <a :href="reportCsvUrl" class="rounded-lg border border-slate-300 py-2 text-center text-sm font-semibold text-slate-700">{{ t('ops.downloadCsv') }}</a>
+                </div>
 
                 <div v-for="row in report" :key="`r-${row.id}`" class="rounded-lg bg-slate-50 p-3 text-sm">
                     <div class="flex justify-between">
@@ -92,7 +95,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useSchoolContext } from '@/composables/useSchoolContext';
@@ -112,6 +115,12 @@ const newTemplate = reactive({ name: '', frequency: 'daily', itemsText: '' });
 const reportFrom = ref(new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10));
 const reportTo = ref(todayIso);
 const report = ref([]);
+const reportCsvUrl = computed(() => `/api/checklists/report?${new URLSearchParams({
+    school_id: activeSchoolId.value ?? '',
+    from: reportFrom.value,
+    to: reportTo.value,
+    format: 'csv',
+})}`);
 
 function resetDrafts() {
     for (const list of checklists.value) {

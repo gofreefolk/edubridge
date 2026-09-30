@@ -29,7 +29,7 @@
 
 1. Run `php artisan migrate --seed` on staging
 2. Replace pilot phones with real school contacts
-3. Import class list via admin (CSV upload — future)
+3. Import class list via admin CSV upload (see `docs/CSV_IMPORT.md`)
 4. Send SMS invite to parents with magic link to first notice
 5. Disable WhatsApp groups for official notices (school policy)
 6. Review adoption metrics weekly in first month

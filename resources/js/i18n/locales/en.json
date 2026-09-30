@@ -502,6 +502,26 @@
         "showReport": "Show report",
         "missed": "Missed",
         "searchStudent": "Search student",
-        "chooseStudent": "Choose student"
+        "chooseStudent": "Choose student",
+        "downloadCsv": "Download CSV"
+    },
+    "dashboard": {
+        "today": "Today at a glance",
+        "attendance": "Attendance today",
+        "markedOf": "{marked} of {total} marked",
+        "absentToday": "{count} absent",
+        "noticeReads": "Notice read rate",
+        "noticesThisWeek": "{count} notice(s) in 7 days",
+        "scheduled": "{count} scheduled",
+        "openFeedback": "Open messages",
+        "oldestDays": "Oldest waiting {days} day(s)",
+        "checklistsDone": "Checklists done",
+        "incidentsWeek": "Incidents in 7 days",
+        "healthWeek": "{count} health note(s)",
+        "adoption": "Parent adoption",
+        "adoptionDetail": "{readers} of {parents} parents read a notice",
+        "unmarkedClasses": "Attendance not marked yet: class {classes}",
+        "pendingChecklists": "Checklists pending: {names}",
+        "deliveryFailed": "{count} WhatsApp/SMS message(s) failed in the last 24 hours. Check the gateway."
     }
 }

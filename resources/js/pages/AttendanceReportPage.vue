@@ -63,12 +63,13 @@
                 </table>
             </div>
             <p class="text-xs text-slate-500">{{ t('ops.reportHint') }}</p>
+            <a :href="csvUrl" class="block rounded-xl border border-slate-300 bg-white py-2 text-center text-sm font-semibold text-slate-700">{{ t('ops.downloadCsv') }}</a>
         </template>
     </section>
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useClassPicker } from '@/composables/useClassPicker';
@@ -81,6 +82,11 @@ const month = ref(thisMonth);
 const report = ref(null);
 const loading = ref(false);
 const error = ref('');
+const csvUrl = computed(() => {
+    const params = new URLSearchParams({ school_class_id: classId.value ?? '', month: month.value, format: 'csv' });
+    if (sectionId.value) params.set('section_id', sectionId.value);
+    return `/api/attendance/report?${params}`;
+});
 
 async function load() {
     error.value = '';

@@ -46,12 +46,14 @@ unaided / CBSE schools and preschools, not only aided LP schools.
 4. Pilot onboarding per `docs/PILOT.md` (real contacts, CSV import, parent invites).
 5. Update `docs/PILOT.md`: CSV import is no longer "future".
 
-## Phase 1 — Admin dashboard & management reports (S–M)
+## Phase 1 — Admin dashboard & management reports (S–M) — built
 
 No new tables — aggregates data we already have. Also gives us the pilot adoption metrics.
+Not cached yet (aggregate queries only); add caching if it gets slow on large schools.
+"Parents who logged in" is not tracked (no last-login column), so adoption uses notice reads.
 
 **Backend**
-- `App\Services\Admin\AdminDashboardService`, cached ~5 min per school.
+- `App\Services\Admin\AdminDashboardService`.
 - `GET api/admin/dashboard` (school_admin, super_admin).
 - Widgets:
   - Today's attendance: % present per class, absentees, absence alerts sent.
