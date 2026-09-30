@@ -33,6 +33,11 @@
                 />
             </label>
 
+            <label class="flex items-start gap-2 text-sm text-slate-700">
+                <input v-model="whatsappConsent" type="checkbox" class="mt-1" />
+                <span>{{ t('admin.whatsappConsent') }}</span>
+            </label>
+
             <p v-if="error" class="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>
             <p v-if="success" class="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800">{{ success }}</p>
 
@@ -68,7 +73,8 @@ const selectedFile = ref(null);
 const uploading = ref(false);
 const error = ref('');
 const success = ref('');
-const errors = ref([]);
+$1
+const whatsappConsent = ref(false);
 
 function onFileChange(event) {
     selectedFile.value = event.target.files?.[0] ?? null;
@@ -89,7 +95,8 @@ async function upload() {
 
     const formData = new FormData();
     formData.append('file', selectedFile.value);
-    formData.append('school_id', activeSchoolId.value);
+$1
+    formData.append('whatsapp_consent', whatsappConsent.value ? '1' : '0');
 
     try {
         const { data } = await axios.post('/api/admin/import/parents', formData, {

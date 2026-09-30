@@ -19,12 +19,29 @@
                 <option value="transport">{{ t('messages.categoryTransport') }}</option>
                 <option value="fees">{{ t('messages.categoryFees') }}</option>
             </select>
-            <select v-model="form.direction" class="w-full rounded-xl border px-3 py-2" required>
+            <select v-if="!isStaff" v-model="form.direction" class="w-full rounded-xl border px-3 py-2" required>
                 <option value="parent_to_teacher">{{ t('messages.toTeacher') }}</option>
                 <option value="parent_to_admin">{{ t('messages.toAdmin') }}</option>
+                <option value="parent_to_smc">{{ t('messages.toSmc') }}</option>
             </select>
+            <!-- Staff: choose which child's parents to write to -->
+            <template v-else>
+                <input
+                    v-if="isAdminRole"
+                    v-model="studentQuery"
+                    type="search"
+                    class="w-full rounded-xl border px-3 py-2"
+                    :placeholder="t('ops.searchStudent')"
+                    @input="searchStudents"
+                />
+                <select v-model="staffStudentId" class="w-full rounded-xl border px-3 py-2" required>
+                    <option :value="null" disabled>{{ t('ops.chooseStudent') }}</option>
+                    <option v-for="s in staffStudents" :key="s.id" :value="s.id">{{ s.name }}</option>
+                </select>
+            </template>
             <input v-model="form.subject" class="w-full rounded-xl border px-3 py-2" :placeholder="t('messages.subject')" required />
             <textarea v-model="form.body" class="w-full rounded-xl border px-3 py-2" rows="3" :placeholder="t('messages.body')" required />
+            <p v-if="submitError" class="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{{ submitError }}</p>
             <button type="submit" class="w-full rounded-xl bg-blue-700 py-2.5 font-semibold text-white" :disabled="submitting">
                 {{ submitting ? t('common.loading') : t('messages.send') }}
             </button>
@@ -150,7 +167,39 @@ const form = reactive({
     direction: 'parent_to_teacher',
 });
 
-const canCompose = computed(() => ['parent', 'grandparent'].includes(activeRole.value));
+const isStaff = computed(() => ['teacher', 'school_admin'].includes(activeRole.value));
+const isAdminRole = computed(() => activeRole.value === 'school_admin');
+const canCompose = computed(() => ['parent', 'grandparent'].includes(activeRole.value) || isStaff.value);
+
+const submitError = ref('');
+const staffStudents = ref([]);
+const staffStudentId = ref(null);
+const studentQuery = ref('');
+let searchTimer = null;
+
+async function loadStaffStudents() {
+    staffStudentId.value = null;
+    if (isAdminRole.value) {
+        const { data } = await axios.get('/api/admin/students', {
+            params: { school_id: activeSchoolId.value, q: studentQuery.value || undefined, status: 'active' },
+        });
+        staffStudents.value = data.students;
+    } else if (user.value?.teacher_class_id) {
+        const { data } = await axios.get('/api/attendance/sheet', {
+            params: { school_class_id: user.value.teacher_class_id, section_id: user.value.teacher_section_id || undefined },
+        });
+        staffStudents.value = data.students;
+    }
+}
+
+function searchStudents() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadStaffStudents, 300);
+}
+
+watch(showForm, (open) => {
+    if (open && isStaff.value) loadStaffStudents();
+});
 
 function statusClass(status) {
     if (status === 'resolved') return 'bg-green-100 text-green-800';
@@ -191,12 +240,13 @@ function closeThread() {
 
 async function submit() {
     submitting.value = true;
+    submitError.value = '';
     try {
         await axios.post('/api/feedback', {
             school_id: activeSchoolId.value,
-            student_id: activeStudentId.value,
+            student_id: isStaff.value ? staffStudentId.value : activeStudentId.value,
             category: form.category,
-            direction: form.direction,
+            direction: isStaff.value ? 'teacher_to_parent' : form.direction,
             subject: form.subject,
             body: form.body,
         });
@@ -204,6 +254,8 @@ async function submit() {
         form.body = '';
         showForm.value = false;
         await load();
+    } catch (e) {
+        submitError.value = e.response?.data?.message ?? t('common.error');
     } finally {
         submitting.value = false;
     }

@@ -9,6 +9,9 @@ class Question extends Model
 {
     protected $fillable = ['question_bank_id', 'type', 'body', 'options', 'correct_answer', 'marks'];
 
+    // Never sent to students; staff endpoints opt back in with makeVisible().
+    protected $hidden = ['correct_answer'];
+
     protected function casts(): array
     {
         return [

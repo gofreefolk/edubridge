@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Student;
 
+use App\Http\Controllers\Concerns\AuthorizesSchoolAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceRecord;
 use App\Models\Exam;
@@ -13,12 +14,16 @@ use Illuminate\Http\Request;
 
 class StudentPortalController extends Controller
 {
+    use AuthorizesSchoolAdmin;
+
     public function dashboard(Request $request): JsonResponse
     {
-        $request->validate(['student_id' => ['required', 'exists:students,id']]);
-        $student = Student::query()->with(['schoolClass', 'section'])->findOrFail($request->query('student_id'));
+        $data = $request->validate(['student_id' => ['required', 'integer']]);
+        $student = Student::query()->with(['schoolClass', 'section'])->findOrFail($data['student_id']);
+        $this->ensureCanAccessStudent($request->user(), $student);
 
         $homework = Homework::query()
+            ->where('school_id', $student->school_id)
             ->where('school_class_id', $student->school_class_id)
             ->where(fn ($q) => $q->whereNull('section_id')->orWhere('section_id', $student->section_id))
             ->where('due_date', '>=', now()->toDateString())
@@ -33,6 +38,7 @@ class StudentPortalController extends Controller
             ->get();
 
         $timetable = TimetableSlot::query()
+            ->where('school_id', $student->school_id)
             ->where('school_class_id', $student->school_class_id)
             ->where(fn ($q) => $q->whereNull('section_id')->orWhere('section_id', $student->section_id))
             ->with(['subject:id,name', 'teacher:id,name'])
@@ -41,7 +47,9 @@ class StudentPortalController extends Controller
             ->get();
 
         $exams = Exam::query()
-            ->where('school_class_id', $student->school_class_id)
+            ->where('school_id', $student->school_id)
+            ->where(fn ($q) => $q->whereNull('school_class_id')->orWhere('school_class_id', $student->school_class_id))
+            ->where(fn ($q) => $q->whereNull('section_id')->orWhere('section_id', $student->section_id))
             ->where('status', 'published')
             ->where('closes_at', '>=', now())
             ->get();

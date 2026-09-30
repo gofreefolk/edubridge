@@ -17,10 +17,16 @@ export default defineConfig({
                 },
             },
         }),
+        // The build lives under /build, but the service worker must control the whole
+        // site, so it is served from /sw.js by a Laravel route (see routes/web.php) and
+        // registered in app.js. Precache URLs are therefore prefixed with /build/.
         VitePWA({
             registerType: 'autoUpdate',
+            injectRegister: null,
+            scope: '/',
             includeAssets: ['favicon.ico'],
             manifest: {
+                id: '/',
                 name: 'EduBridge',
                 short_name: 'EduBridge',
                 description: 'Official school communication for Kerala schools',
@@ -30,25 +36,40 @@ export default defineConfig({
                 orientation: 'portrait',
                 lang: 'ml',
                 start_url: '/',
+                scope: '/',
                 icons: [
-                    {
-                        src: '/favicon.ico',
-                        sizes: '64x64',
-                        type: 'image/x-icon',
-                    },
+                    { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                    { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                    { src: '/icons/icon-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+                    { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
                 ],
             },
             workbox: {
-                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-                navigateFallback: '/',
+                globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
+                modifyURLPrefix: { '': '/build/' },
+                inlineWorkboxRuntime: true,
+                // The HTML shell is rendered by Laravel, so it is not precached; cache it
+                // network-first so the app still opens offline after a first visit.
+                navigateFallback: null,
                 runtimeCaching: [
                     {
-                        urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                        urlPattern: ({ request, url }) => request.mode === 'navigate'
+                            && !url.pathname.startsWith('/api/')
+                            && url.pathname !== '/up',
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'pages',
+                            networkTimeoutSeconds: 5,
+                            expiration: { maxEntries: 20 },
+                        },
+                    },
+                    {
+                        urlPattern: /^https:\/\/fonts\.bunny\.net\/.*/i,
                         handler: 'CacheFirst',
                         options: {
-                            cacheName: 'google-fonts-cache',
+                            cacheName: 'fonts-cache',
                             expiration: {
-                                maxEntries: 10,
+                                maxEntries: 20,
                                 maxAgeSeconds: 60 * 60 * 24 * 365,
                             },
                             cacheableResponse: {

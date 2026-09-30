@@ -34,6 +34,24 @@
         </div>
 
         <div>
+            <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ t('ops.dailyOpsTitle') }}</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <router-link :to="{ name: 'teacher-class' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                    🗓️ {{ t('ops.attendanceTitle') }}
+                </router-link>
+                <router-link :to="{ name: 'attendance-report' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                    📊 {{ t('ops.reportTitle') }}
+                </router-link>
+                <router-link :to="{ name: 'centre-logs' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                    📓 {{ t('ops.logsTitle') }}
+                </router-link>
+                <router-link :to="{ name: 'checklists' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                    ✅ {{ t('ops.checklistsTitle') }}
+                </router-link>
+            </div>
+        </div>
+
+        <div>
             <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ t('admin.setupTitle') }}</h2>
             <div class="grid grid-cols-2 gap-3">
                 <router-link

@@ -43,6 +43,9 @@
             </button>
 
             <div v-if="expandedId === student.id" class="mt-4 space-y-4 border-t border-slate-100 pt-4">
+                <router-link :to="{ name: 'student-profile', params: { id: student.id } }" class="block rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-center text-sm font-semibold text-blue-800">
+                    🩺 {{ t('ops.viewProfile') }}
+                </router-link>
                 <form class="space-y-2" @submit.prevent="saveStudent(student)">
                     <input v-model="editForm.name" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
                     <input v-model="editForm.admission_number" type="text" :placeholder="t('admin.admissionNumber')" class="w-full rounded-lg border border-slate-300 px-3 py-2" />

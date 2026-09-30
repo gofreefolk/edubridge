@@ -31,6 +31,12 @@
             >
                 📅 {{ t('nav.calendar') }}
             </router-link>
+            <router-link :to="{ name: 'centre-logs' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                📓 {{ t('ops.logsTitle') }}
+            </router-link>
+            <router-link :to="{ name: 'checklists' }" class="rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-blue-800">
+                ✅ {{ t('ops.checklistsTitle') }}
+            </router-link>
         </div>
     </section>
 </template>

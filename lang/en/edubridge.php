@@ -3,7 +3,7 @@
 return [
 
     'default_parent_name' => 'Parent',
-    'otp_sms' => 'Your :app login code is :code. Valid for 10 minutes.',
+    'otp_sms' => 'Your :app login code is :code. Valid for :minutes minutes.',
     'otp_cooldown' => 'Please wait :seconds seconds before requesting another code.',
     'otp_expired' => 'This code has expired. Please request a new one.',
     'otp_invalid' => 'The code you entered is incorrect.',
@@ -39,5 +39,15 @@ return [
     'whatsapp_queued' => 'WhatsApp alert queued for :count parent(s) in the selected audience.',
     'notice_scheduled' => 'Notice scheduled for publishing.',
     'notice_unpublished' => 'Notice unpublished and archived.',
+    'notice_already_published' => 'This notice is already published.',
+    'invalid_reference' => 'One of the selected classes, sections, subjects or records does not belong to this school.',
+    'exam_not_open' => 'This exam is not open right now.',
+    'attempt_closed' => 'This exam attempt has already been submitted or has timed out.',
+    'too_many_requests' => 'Too many attempts. Please wait a minute and try again.',
+    'absence_alert' => ':school: :student was marked absent today (:date). If this is unexpected, please contact the class teacher through EduBridge.',
+    'checklist_inactive' => 'This checklist is no longer active.',
+    'range_too_long' => 'Please choose a date range of one year or less.',
+    'student_required' => 'Choose the student this message is about.',
+    'student_has_no_parent' => 'No parent is linked to this student yet.',
 
 ];

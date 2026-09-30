@@ -26,11 +26,9 @@ class ParentDashboardService
             ? $children->firstWhere('id', $studentId)
             : $children->first();
 
-        $notices = $this->noticeService->forParent(
-            $user,
-            $schoolId,
-            $activeStudent?->id,
-        );
+        $notices = $activeStudent
+            ? $this->noticeService->visibleTo($user, $schoolId, $activeStudent->id)
+            : collect();
 
         $urgentNotice = $notices->firstWhere('priority', 'urgent');
 
@@ -47,9 +45,7 @@ class ParentDashboardService
             ->whereIn('status', ['open', 'acknowledged'])
             ->count();
 
-        $unreadNotices = $notices->filter(function (Notice $notice) use ($user) {
-            return ! $notice->reads()->where('user_id', $user->id)->exists();
-        })->count();
+        $unreadNotices = $notices->where('is_read', false)->count();
 
         return [
             'school' => $user->schools()->where('schools.id', $schoolId)->first(['schools.id', 'schools.name']),

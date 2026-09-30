@@ -10,6 +10,10 @@
         <title>{{ config('app.name', 'EduBridge') }}</title>
 
         <link rel="icon" href="/favicon.ico" sizes="any">
+        <link rel="apple-touch-icon" href="/icons/icon-192.png">
+        @if (file_exists(public_path('build/manifest.webmanifest')))
+            <link rel="manifest" href="/manifest.webmanifest">
+        @endif
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=noto-sans-malayalam:400,500,600,700|instrument-sans:400,500,600,700" rel="stylesheet" />
 

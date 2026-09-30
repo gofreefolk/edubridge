@@ -20,6 +20,12 @@ class NotificationSummaryController extends Controller
             'school_id' => ['required', 'integer', 'exists:schools,id'],
         ]);
 
+        abort_unless(
+            $request->user()->isSuperAdmin() || $request->user()->rolesAtSchool((int) $validated['school_id']) !== [],
+            403,
+            __('edubridge.unauthorized_role'),
+        );
+
         return response()->json(
             $this->summaryService->summary($request->user(), (int) $validated['school_id']),
         );

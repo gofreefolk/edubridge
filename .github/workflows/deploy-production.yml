@@ -7,7 +7,8 @@ on:
 
 concurrency:
   group: production-deploy
-  cancel-in-progress: true
+  # Never kill a deploy halfway through activation; queue the next one instead.
+  cancel-in-progress: false
 
 jobs:
   test:

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,18 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    public const ROLE_PRIORITY = [
+        'super_admin',
+        'school_admin',
+        'teacher',
+        'transport_staff',
+        'smc_member',
+        'parent',
+        'grandparent',
+        'student',
+        'alumni',
+    ];
 
     protected function casts(): array
     {
@@ -52,29 +65,78 @@ class User extends Authenticatable
         return $this->hasMany(WhatsAppOptIn::class);
     }
 
+    /**
+     * Highest-priority active role the user holds at the school.
+     */
     public function roleAtSchool(int $schoolId): ?string
     {
-        $pivot = $this->schools()->where('school_id', $schoolId)->first()?->pivot;
+        return self::highestPriorityRole($this->rolesAtSchool($schoolId));
+    }
 
-        return $pivot?->role;
+    /** @return list<string> */
+    public function rolesAtSchool(int $schoolId): array
+    {
+        return $this->activeRoleRows()
+            ->where('school_user.school_id', $schoolId)
+            ->pluck('school_user.role')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * True when the user holds any of the given roles at this specific school.
+     * Super admins always pass.
+     */
+    public function hasRoleAtSchool(int $schoolId, string ...$roles): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return count(array_intersect($this->rolesAtSchool($schoolId), $roles)) > 0;
+    }
+
+    /**
+     * Grants a role at a school without touching the user's other roles there.
+     */
+    public function assignSchoolRole(int $schoolId, string $role, bool $active = true): void
+    {
+        DB::table('school_user')->updateOrInsert(
+            ['school_id' => $schoolId, 'user_id' => $this->id, 'role' => $role],
+            ['is_active' => $active, 'updated_at' => now(), 'created_at' => now()],
+        );
+    }
+
+    public function isParentOf(Student|int $student): bool
+    {
+        $studentId = $student instanceof Student ? $student->id : $student;
+
+        return $this->children()->where('students.id', $studentId)->exists();
+    }
+
+    /**
+     * Whether the user may see a student's records: the student themselves, a linked
+     * parent, staff at the student's school, or a super admin.
+     */
+    public function canAccessStudent(Student $student): bool
+    {
+        if ($student->user_id !== null && $student->user_id === $this->id) {
+            return true;
+        }
+
+        if ($this->hasRoleAtSchool($student->school_id, 'school_admin', 'teacher')) {
+            return true;
+        }
+
+        return $this->isParentOf($student);
     }
 
     /** @return list<string> */
     public function getRoles(): array
     {
-        $schoolRoles = $this->schools()
-            ->wherePivot('is_active', true)
-            ->get()
-            ->pluck('pivot.role');
-
-        $platformRoles = DB::table('school_user')
-            ->where('user_id', $this->id)
-            ->whereNull('school_id')
-            ->where('is_active', true)
-            ->pluck('role');
-
-        return $schoolRoles
-            ->merge($platformRoles)
+        return $this->activeRoleRows()
+            ->pluck('school_user.role')
             ->unique()
             ->values()
             ->all();
@@ -82,40 +144,53 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return in_array('super_admin', $this->getRoles(), true);
+        return $this->activeRoleRows()
+            ->whereNull('school_user.school_id')
+            ->where('school_user.role', 'super_admin')
+            ->exists();
     }
 
     public function hasAnyRole(string ...$roles): bool
     {
-        if (in_array('super_admin', $this->getRoles(), true)) {
+        $userRoles = $this->getRoles();
+
+        if (in_array('super_admin', $userRoles, true)) {
             return true;
         }
 
-        return count(array_intersect($this->getRoles(), $roles)) > 0;
+        return count(array_intersect($userRoles, $roles)) > 0;
     }
 
     public function primaryRole(): string
     {
-        $priority = [
-            'super_admin',
-            'school_admin',
-            'teacher',
-            'transport_staff',
-            'smc_member',
-            'parent',
-            'grandparent',
-            'student',
-            'alumni',
-        ];
-
         $roles = $this->getRoles();
 
-        foreach ($priority as $role) {
+        return self::highestPriorityRole($roles) ?? 'parent';
+    }
+
+    /** @param  list<string>  $roles */
+    public static function highestPriorityRole(array $roles): ?string
+    {
+        foreach (self::ROLE_PRIORITY as $role) {
             if (in_array($role, $roles, true)) {
                 return $role;
             }
         }
 
-        return $roles[0] ?? 'parent';
+        return $roles[0] ?? null;
+    }
+
+    /**
+     * Active role rows, ignoring schools that have been soft-deleted.
+     */
+    private function activeRoleRows(): Builder
+    {
+        return DB::table('school_user')
+            ->leftJoin('schools', 'schools.id', '=', 'school_user.school_id')
+            ->where('school_user.user_id', $this->id)
+            ->where('school_user.is_active', true)
+            ->where(fn (Builder $q) => $q
+                ->whereNull('school_user.school_id')
+                ->orWhereNull('schools.deleted_at'));
     }
 }

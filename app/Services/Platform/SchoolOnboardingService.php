@@ -162,9 +162,7 @@ class SchoolOnboardingService
         return DB::transaction(function () use ($invite, $user) {
             $user->update(['name' => $invite->name]);
 
-            $user->schools()->syncWithoutDetaching([
-                $invite->school_id => ['role' => 'school_admin', 'is_active' => true],
-            ]);
+            $user->assignSchoolRole($invite->school_id, 'school_admin');
 
             $invite->update([
                 'status' => SchoolAdminInvite::STATUS_ACCEPTED,

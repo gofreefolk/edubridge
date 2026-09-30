@@ -13,6 +13,10 @@ class SendUrgentNoticeWhatsApp implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 3;
+
+    public int $backoff = 60;
+
     public function __construct(
         public readonly int $noticeId,
     ) {}
@@ -38,26 +42,21 @@ class SendUrgentNoticeWhatsApp implements ShouldQueue
             $magicUrl,
         );
 
-        $recipientIds = $noticeService->eligibleRecipientUsers($notice)->pluck('id');
-
-        $recipients = $noticeService->eligibleRecipientUsers($notice)->keyBy('id');
-
-        $optedInUserIds = WhatsAppOptIn::query()
-            ->where('school_id', $notice->school_id)
-            ->where('opted_in', true)
-            ->whereIn('user_id', $recipients->keys())
-            ->pluck('user_id');
+        $recipients = $noticeService->eligibleRecipientsQuery($notice)
+            ->whereNotNull('phone')
+            ->whereIn('users.id', WhatsAppOptIn::query()
+                ->select('user_id')
+                ->where('school_id', $notice->school_id)
+                ->where('opted_in', true))
+            ->get();
 
         $sent = 0;
 
-        foreach ($optedInUserIds as $userId) {
-            $user = $recipients->get($userId);
-            if (! $user?->phone) {
-                continue;
+        foreach ($recipients as $user) {
+            // Opt-in already verified in the query above.
+            if ($whatsApp->sendToUser($user, $message, 'urgent_notice', $notice->school_id, checkOptIn: false)) {
+                $sent++;
             }
-
-            $whatsApp->sendToUser($user, $message, 'urgent_notice', $notice->school_id);
-            $sent++;
         }
 
         if ($sent > 0) {

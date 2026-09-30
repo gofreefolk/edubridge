@@ -8,17 +8,48 @@ Official school communication PWA for Kerala schools — notices, calendar, feed
 - Phone OTP authentication (no passwords)
 - WhatsApp bridge for urgent notice alerts (log driver in development)
 
-## Quick start
+## Requirements
+
+- **PHP 8.5+** with `pdo_sqlite` / `pdo_mysql`, `mbstring`, `fileinfo`, `gd`
+- **Node.js 20+** (Vite 6); older Node versions hang or fail during `npm run build`
+- Composer 2, and MySQL 8 or SQLite
+
+On Laragon, the default `php` / `node` on PATH may be old. Use the bundled versions
+(adjust to your install), for example in Git Bash:
+
+```bash
+export PATH="/d/Apps/laragon/bin/php/php-8.5.7-nts-Win32-vs17-x64:/d/Apps/laragon/bin/nodejs/node-v22:$PATH"
+php -v && node -v
+```
+
+## Quick start (local)
 
 ```bash
 composer install
-cp .env.example .env
+cp .env.example .env          # set DB_* (or keep DB_CONNECTION=sqlite)
 php artisan key:generate
-php artisan migrate --seed
+php artisan migrate --seed    # pilot school + demo accounts (skipped when APP_ENV=production)
 npm install
-npm run build
-php artisan serve
+npm run build                 # or `npm run dev` for hot reload
 ```
+
+Run the app. You need the web server, a queue worker (WhatsApp alerts, event reminders) and the scheduler (scheduled notices, reminders):
+
+```bash
+composer dev                  # server + queue + logs + vite, all in one terminal
+# or separately:
+php artisan serve
+php artisan queue:work
+php artisan schedule:work
+```
+
+Open http://127.0.0.1:8000 and sign in with a demo phone number below. In development the OTP
+is not texted: it is written to `storage/logs/laravel.log` (search for `SMS (log driver)`).
+To skip that, set `EDUBRIDGE_OTP_DEV_CODE=123456` in `.env` (honoured only when `APP_ENV=local`).
+
+If the page is blank after a `npm run dev` session, delete `public/hot`.
+
+Run the tests: `php artisan test`
 
 ## Pilot school (seeded)
 
@@ -37,6 +68,7 @@ php artisan serve
 ## Features
 
 - **MVP:** Notices, calendar, feedback, SMC board, WhatsApp urgent alerts
+- **School operations:** student health profiles, emergency contacts and authorised pickup; attendance marking with WhatsApp absence alerts and monthly reports; daily log / incident reports (optionally shared with parents); daily and weekly checklists with completion reports; staff-initiated messages to parents
 - **Year 1:** Student portal (homework, attendance, timetable), teacher workspace
 - **Year 1–2:** Online examinations with auto-grading
 - **Year 2:** School transport (routes, trips, boarding logs)
@@ -50,15 +82,56 @@ All routes under `/api` — session auth via OTP login.
 
 Pushes to `main` run tests and build on GitHub, then deploy on your **self-hosted runner** (apstrix). No inbound SSH from GitHub is required.
 
-### One-time server setup
+### One-time server setup (aaPanel / multiple projects)
 
-```bash
-export APP_DIR=/www/wwwroot/edubridge   # your app root
-bash scripts/server-init.sh
-# Place production .env at: $APP_DIR/shared/.env
+EduBridge uses its **own folder**. Other sites on apstrix are not changed.
+
+Typical aaPanel layout:
+
+```
+/www/wwwroot/
+├── other-project.com/     ← your existing sites (leave as-is)
+├── another-app.com/
+└── edubridge.example.com/ ← EduBridge only (new)
+    ├── releases/          ← each deploy (git SHA)
+    ├── shared/
+    │   ├── .env           ← production env (persists across deploys)
+    │   └── storage/       ← uploads, logs, cache
+    └── current → releases/<sha>/   ← symlink, web root points here
 ```
 
-Point the web server document root to `{APP_DIR}/current/public`.
+**1. Create a site in aaPanel** for EduBridge (e.g. `edubridge.example.com`).
+
+**2. Pick a dedicated path** (match the site folder aaPanel created, or choose your own):
+
+```bash
+export APP_DIR=/www/wwwroot/edubridge.example.com
+```
+
+**3. Run init** (from a clone of this repo, or copy `scripts/server-init.sh` to the server):
+
+```bash
+bash scripts/server-init.sh
+```
+
+**4. Production `.env`** — only for EduBridge:
+
+```bash
+nano $APP_DIR/shared/.env
+# copy from .env.example, set DB, APP_URL, etc.
+```
+
+**5. aaPanel site settings** — set document root to:
+
+```
+/www/wwwroot/edubridge.example.com/current/public
+```
+
+(`current` does not exist until the first deploy; you can point it after deploy #1, or create a placeholder.)
+
+**6. GitHub secret** `PRODUCTION_PATH` = same path, e.g. `/www/wwwroot/edubridge.example.com`
+
+Other GitHub repos / projects on the same server: use a **separate** `APP_DIR` and (if needed) a **separate** self-hosted runner under `/opt/github-runner-<project>`.
 
 ### Install self-hosted runner (apstrix)
 
@@ -82,9 +155,54 @@ The runner must have labels: `self-hosted`, `linux`, `edubridge`.
 
 | Secret | Description |
 |--------|-------------|
-| `PRODUCTION_PATH` | App root on the server (e.g. `/www/wwwroot/edubridge`) |
+| `PRODUCTION_PATH` | This project’s app root only, e.g. `/www/wwwroot/edubridge.example.com` |
 
 Ensure PHP 8.5+ CLI is on the server (`php -v`). The runner user must be able to write to `PRODUCTION_PATH`.
+
+### How a deploy runs
+
+`scripts/deploy-activate.sh` unpacks the release, links the shared `.env` and `storage`,
+puts the live site into maintenance, runs migrations and warms caches **on the new
+release**, then atomically switches `current` and brings the site back up. If any step
+fails, `current` keeps pointing at the previous release and the site is brought back up.
+
+### Queue worker and scheduler (required)
+
+Urgent-notice WhatsApp alerts and event reminders run on the queue, and scheduled
+notices are published by the scheduler. Without these, those features silently do nothing.
+
+Cron (as the web/deploy user):
+
+```
+* * * * * cd /www/wwwroot/edubridge.example.com/current && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Supervisor (aaPanel → Supervisor, or `/etc/supervisor/conf.d/edubridge-worker.conf`):
+
+```ini
+[program:edubridge-worker]
+command=php /www/wwwroot/edubridge.example.com/current/artisan queue:work --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+user=www
+stopwaitsecs=3600
+stdout_logfile=/www/wwwroot/edubridge.example.com/shared/storage/logs/worker.log
+```
+
+Each deploy runs `queue:restart`, so the worker picks up new code automatically.
+
+### Production `.env` essentials
+
+| Key | Value |
+|-----|-------|
+| `APP_ENV` / `APP_DEBUG` | `production` / `false` |
+| `QUEUE_CONNECTION` | `database` (or `redis`) |
+| `EDUBRIDGE_SMS_DRIVER` | `http`. The `log` driver cannot deliver OTPs, so nobody can log in |
+| `EDUBRIDGE_SMS_WEBHOOK_URL` / `_TOKEN` | Your SMS gateway adapter; receives `{"phone": "+91…", "message": "…"}` |
+| `EDUBRIDGE_WHATSAPP_DRIVER` / `_WEBHOOK_URL` | `http` and your WhatsApp bridge URL |
+| `EDUBRIDGE_OTP_DEV_CODE` | leave empty |
+
+Do not run `db:seed` in production: the pilot seeder creates a super admin whose phone number is published in this README (the seeder refuses when `APP_ENV=production`).
 
 ## License
 

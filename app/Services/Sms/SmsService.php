@@ -2,21 +2,20 @@
 
 namespace App\Services\Sms;
 
-use RuntimeException;
-
 class SmsService
 {
     public function __construct(
-        private readonly LogSmsDriver $logDriver,
+        private readonly SmsDriver $driver,
     ) {}
 
     public function sendOtp(string $phone, string $code): void
     {
-        $message = __('edubridge.otp_sms', ['code' => $code, 'app' => config('app.name')]);
+        $message = __('edubridge.otp_sms', [
+            'code' => $code,
+            'app' => config('app.name'),
+            'minutes' => config('edubridge.otp.expiry_minutes'),
+        ]);
 
-        match (config('edubridge.sms.driver')) {
-            'log' => $this->logDriver->send($phone, $message),
-            default => throw new RuntimeException('Unsupported SMS driver.'),
-        };
+        $this->driver->send($phone, $message);
     }
 }

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Transport;
 
+use App\Http\Controllers\Concerns\AuthorizesSchoolAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\BoardingLog;
 use App\Models\Route;
+use App\Models\RouteStop;
 use App\Models\Student;
 use App\Models\StudentRouteAssignment;
 use App\Models\TransportAbsence;
@@ -15,20 +17,26 @@ use Illuminate\Http\Request;
 
 class TransportController extends Controller
 {
+    use AuthorizesSchoolAdmin;
+
+    private const STAFF_ROLES = ['transport_staff', 'school_admin'];
+
     public function index(Request $request): JsonResponse
     {
-        $schoolId = (int) $request->query('school_id');
-        $request->validate(['school_id' => ['required', 'exists:schools,id']]);
+        $data = $request->validate(['school_id' => ['required', 'exists:schools,id']]);
+        $school = $this->schoolForRoles($request->user(), (int) $data['school_id'], ...self::STAFF_ROLES);
 
         return response()->json([
-            'vehicles' => Vehicle::query()->where('school_id', $schoolId)->where('is_active', true)->get(),
-            'routes' => Route::query()->where('school_id', $schoolId)->with('stops')->get(),
+            'vehicles' => Vehicle::query()->where('school_id', $school->id)->where('is_active', true)->get(),
+            'routes' => Route::query()->where('school_id', $school->id)->with('stops')->get(),
         ]);
     }
 
     public function studentStatus(Request $request): JsonResponse
     {
-        $student = Student::query()->findOrFail($request->query('student_id'));
+        $data = $request->validate(['student_id' => ['required', 'integer']]);
+        $student = Student::query()->findOrFail($data['student_id']);
+        $this->ensureCanAccessStudent($request->user(), $student);
 
         $assignment = StudentRouteAssignment::query()
             ->where('student_id', $student->id)
@@ -50,13 +58,16 @@ class TransportController extends Controller
     public function reportAbsence(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'student_id' => ['required', 'exists:students,id'],
-            'absence_date' => ['required', 'date'],
-            'note' => ['nullable', 'string'],
+            'student_id' => ['required', 'integer'],
+            'absence_date' => ['required', 'date', 'after_or_equal:today'],
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $student = Student::query()->findOrFail($data['student_id']);
+        abort_unless($request->user()->isParentOf($student), 403, __('edubridge.forbidden'));
+
         $absence = TransportAbsence::query()->updateOrCreate(
-            ['student_id' => $data['student_id'], 'absence_date' => $data['absence_date']],
+            ['student_id' => $student->id, 'absence_date' => $data['absence_date']],
             ['reported_by' => $request->user()->id, 'note' => $data['note'] ?? null],
         );
 
@@ -66,12 +77,20 @@ class TransportController extends Controller
     public function startTrip(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'route_id' => ['required', 'exists:routes,id'],
-            'vehicle_id' => ['nullable', 'exists:vehicles,id'],
+            'route_id' => ['required', 'integer'],
+            'vehicle_id' => ['nullable', 'integer'],
         ]);
 
+        $route = Route::query()->findOrFail($data['route_id']);
+        $this->schoolForRoles($request->user(), $route->school_id, ...self::STAFF_ROLES);
+
+        if (! empty($data['vehicle_id'])
+            && ! Vehicle::query()->whereKey($data['vehicle_id'])->where('school_id', $route->school_id)->exists()) {
+            abort(422, __('edubridge.invalid_reference'));
+        }
+
         $trip = Trip::query()->create([
-            'route_id' => $data['route_id'],
+            'route_id' => $route->id,
             'vehicle_id' => $data['vehicle_id'] ?? null,
             'driver_user_id' => $request->user()->id,
             'trip_date' => today(),
@@ -85,10 +104,21 @@ class TransportController extends Controller
     public function logBoarding(Request $request, Trip $trip): JsonResponse
     {
         $data = $request->validate([
-            'student_id' => ['required', 'exists:students,id'],
-            'route_stop_id' => ['nullable', 'exists:route_stops,id'],
+            'student_id' => ['required', 'integer'],
+            'route_stop_id' => ['nullable', 'integer'],
             'action' => ['required', 'in:boarded,alighted,absent'],
         ]);
+
+        $schoolId = $this->authorizeTrip($request, $trip);
+
+        if (! Student::query()->whereKey($data['student_id'])->where('school_id', $schoolId)->exists()) {
+            abort(422, __('edubridge.invalid_reference'));
+        }
+
+        if (! empty($data['route_stop_id'])
+            && ! RouteStop::query()->whereKey($data['route_stop_id'])->where('route_id', $trip->route_id)->exists()) {
+            abort(422, __('edubridge.invalid_reference'));
+        }
 
         $log = BoardingLog::query()->create([
             'trip_id' => $trip->id,
@@ -103,9 +133,22 @@ class TransportController extends Controller
 
     public function delayAlert(Request $request, Trip $trip): JsonResponse
     {
-        $data = $request->validate(['delay_note' => ['required', 'string']]);
+        $data = $request->validate(['delay_note' => ['required', 'string', 'max:500']]);
+        $this->authorizeTrip($request, $trip);
+
         $trip->update(['delay_note' => $data['delay_note']]);
 
         return response()->json(['trip' => $trip]);
+    }
+
+    /**
+     * @return int the trip's school id
+     */
+    private function authorizeTrip(Request $request, Trip $trip): int
+    {
+        $schoolId = (int) $trip->route()->value('school_id');
+        $this->schoolForRoles($request->user(), $schoolId, ...self::STAFF_ROLES);
+
+        return $schoolId;
     }
 }

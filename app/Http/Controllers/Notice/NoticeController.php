@@ -20,15 +20,24 @@ class NoticeController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $schoolId = (int) $request->query('school_id');
-        $studentId = $request->query('student_id') ? (int) $request->query('student_id') : null;
+        $validated = $request->validate([
+            'school_id' => ['required', 'integer', 'exists:schools,id'],
+            'student_id' => ['nullable', 'integer'],
+        ]);
+
+        $schoolId = (int) $validated['school_id'];
+        $studentId = isset($validated['student_id']) ? (int) $validated['student_id'] : null;
         $user = $request->user();
 
-        $notices = $user->hasAnyRole('school_admin', 'super_admin')
-            ? $this->noticeService->forSchoolAdmin($schoolId)
-            : $this->noticeService->forParent($user, $schoolId, $studentId);
+        if (! $user->isSuperAdmin() && $user->rolesAtSchool($schoolId) === []) {
+            return response()->json(['message' => __('edubridge.unauthorized_role')], 403);
+        }
 
-        $isAdmin = $user->hasAnyRole('school_admin', 'super_admin');
+        $isAdmin = $user->hasRoleAtSchool($schoolId, 'school_admin');
+
+        $notices = $isAdmin
+            ? $this->noticeService->forSchoolAdmin($schoolId)
+            : $this->noticeService->visibleTo($user, $schoolId, $studentId);
 
         return response()->json([
             'notices' => $notices->map(fn (Notice $n) => $this->payload($n, includeStats: $isAdmin && $n->status === 'published')),
@@ -42,7 +51,11 @@ class NoticeController extends Controller
             $data['attachments'] = $request->file('attachments');
         }
 
-        $notice = $this->noticeService->create($request->user(), $data);
+        try {
+            $notice = $this->noticeService->create($request->user(), $data);
+        } catch (InvalidArgumentException $e) {
+            return $this->noticeError($e);
+        }
 
         return response()->json(['notice' => $this->payload($notice)], 201);
     }
@@ -73,6 +86,8 @@ class NoticeController extends Controller
 
     public function publish(Request $request, Notice $notice): JsonResponse
     {
+        $this->authorizeNoticeAdmin($request, $notice);
+
         $data = $request->validate([
             'scheduled_publish_at' => ['nullable', 'date', 'after:now'],
         ]);
@@ -134,11 +149,8 @@ class NoticeController extends Controller
 
     private function authorizeNoticeAdmin(Request $request, Notice $notice): void
     {
-        $user = $request->user();
-
         abort_unless(
-            $user && $user->hasAnyRole('super_admin')
-                || $user?->roleAtSchool($notice->school_id) === 'school_admin',
+            $request->user()?->hasRoleAtSchool($notice->school_id, 'school_admin'),
             403,
             __('edubridge.unauthorized_role'),
         );
@@ -148,6 +160,8 @@ class NoticeController extends Controller
     {
         $key = match ($e->getMessage()) {
             'notice_archived' => 'edubridge.notice_archived',
+            'notice_already_published' => 'edubridge.notice_already_published',
+            'invalid_reference' => 'edubridge.invalid_reference',
             'notice_not_published' => 'edubridge.notice_not_published',
             'notice_not_urgent' => 'edubridge.notice_not_urgent',
             'whatsapp_already_sent' => 'edubridge.whatsapp_already_sent',
@@ -193,7 +207,7 @@ class NoticeController extends Controller
         ];
 
         if ($includeStats) {
-            $stats = $this->noticeService->analytics($notice);
+            $stats = $this->noticeService->analyticsCounts($notice);
             $data['read_count'] = $stats['read_count'];
             $data['eligible_count'] = $stats['eligible_count'];
             $data['read_percent'] = $stats['read_percent'];

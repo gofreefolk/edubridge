@@ -7,18 +7,13 @@ use App\Models\User;
 use App\Models\WhatsAppOptIn;
 use Illuminate\Support\Facades\Log;
 
-interface WhatsAppDriver
-{
-    public function send(string $phone, string $message): bool;
-}
-
 class WhatsAppService
 {
     public function __construct(
         private readonly WhatsAppDriver $driver,
     ) {}
 
-    public function sendToUser(User $user, string $message, string $type, ?int $schoolId = null): bool
+    public function sendToUser(User $user, string $message, string $type, ?int $schoolId = null, bool $checkOptIn = true): bool
     {
         if (! config('edubridge.whatsapp.enabled')) {
             return false;
@@ -28,7 +23,7 @@ class WhatsAppService
             return false;
         }
 
-        if ($schoolId && ! $this->userOptedIn($user, $schoolId)) {
+        if ($checkOptIn && $schoolId && ! $this->userOptedIn($user, $schoolId)) {
             return false;
         }
 

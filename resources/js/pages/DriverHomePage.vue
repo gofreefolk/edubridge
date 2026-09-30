@@ -18,6 +18,13 @@
         >
             📋 {{ t('nav.notices') }}
         </router-link>
+
+        <router-link
+            :to="{ name: 'checklists' }"
+            class="block rounded-2xl border border-slate-200 bg-white p-4 text-center font-semibold text-slate-800"
+        >
+            ✅ {{ t('ops.checklistsTitle') }}
+        </router-link>
     </section>
 </template>
 

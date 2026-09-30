@@ -56,19 +56,49 @@ class FeedbackController extends Controller
             'category' => ['required', 'string', 'in:academic,transport,fees,general'],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:5000'],
-            'direction' => ['required', 'string', 'in:parent_to_teacher,parent_to_admin'],
+            'direction' => ['required', 'string', 'in:parent_to_teacher,parent_to_admin,parent_to_smc,teacher_to_parent'],
         ]);
 
-        if ($validated['student_id']) {
+        $user = $request->user();
+        $schoolId = (int) $validated['school_id'];
+
+        if (! $user->isSuperAdmin() && $user->rolesAtSchool($schoolId) === []) {
+            return response()->json(['message' => __('edubridge.forbidden')], 403);
+        }
+
+        $student = null;
+
+        if (! empty($validated['student_id'])) {
             $student = Student::query()->findOrFail($validated['student_id']);
-            if ($student->school_id !== (int) $validated['school_id']) {
+            if ($student->school_id !== $schoolId || ! $user->canAccessStudent($student)) {
                 return response()->json(['message' => __('edubridge.forbidden')], 403);
             }
         }
 
+        $assignedTo = null;
+
+        // Staff starting a conversation with a child's family: addressed to the primary
+        // parent; every linked parent of the child can read and reply.
+        if ($validated['direction'] === 'teacher_to_parent') {
+            if (! $user->hasRoleAtSchool($schoolId, 'teacher', 'school_admin')) {
+                return response()->json(['message' => __('edubridge.forbidden')], 403);
+            }
+
+            if (! $student) {
+                return response()->json(['message' => __('edubridge.student_required')], 422);
+            }
+
+            $assignedTo = $student->parents()->orderByDesc('parent_student.is_primary')->value('users.id');
+
+            if (! $assignedTo) {
+                return response()->json(['message' => __('edubridge.student_has_no_parent')], 422);
+            }
+        }
+
         $thread = FeedbackThread::query()->create([
-            'school_id' => $validated['school_id'],
-            'student_id' => $validated['student_id'] ?? null,
+            'school_id' => $schoolId,
+            'student_id' => $student?->id,
+            'assigned_to' => $assignedTo,
             'created_by' => $request->user()->id,
             'category' => $validated['category'],
             'subject' => $validated['subject'],

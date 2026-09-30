@@ -26,29 +26,32 @@ class ParentStudentImportService
 
     public function __construct(
         private readonly PhoneNormalizer $phoneNormalizer,
+        private readonly SchoolManagementService $management,
     ) {}
 
-    public function import(School $school, UploadedFile $file): array
+    public function import(School $school, UploadedFile $file, bool $whatsappConsent = false): array
     {
         $rows = $this->parseCsv($file);
         $imported = 0;
         $errors = [];
 
-        $academicYear = $this->resolveAcademicYear($school);
+        $academicYear = $this->management->currentAcademicYear($school);
 
-        DB::transaction(function () use ($school, $academicYear, $rows, &$imported, &$errors) {
-            foreach ($rows as $lineNumber => $row) {
-                try {
-                    $this->importRow($school, $academicYear, $row);
-                    $imported++;
-                } catch (\Throwable $e) {
-                    $errors[] = [
-                        'line' => $lineNumber,
-                        'message' => $e->getMessage(),
-                    ];
-                }
+        foreach ($rows as $lineNumber => $row) {
+            try {
+                // One transaction per row: a bad row rolls back cleanly without
+                // leaving half-created classes, students or parents behind.
+                DB::transaction(fn () => $this->importRow($school, $academicYear, $row, $whatsappConsent));
+                $imported++;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'line' => $lineNumber,
+                    'message' => $e->getMessage() === 'invalid_phone'
+                        ? __('edubridge.invalid_phone')
+                        : $e->getMessage(),
+                ];
             }
-        });
+        }
 
         return [
             'imported' => $imported,
@@ -73,7 +76,8 @@ class ParentStudentImportService
             throw new InvalidArgumentException('CSV file is empty.');
         }
 
-        $header = array_map(fn ($col) => strtolower(trim($col)), $header);
+        // Strip a UTF-8 BOM that Excel adds to the first header cell.
+        $header = array_map(fn ($col) => strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $col))), $header);
 
         foreach (self::REQUIRED_COLUMNS as $column) {
             if (! in_array($column, $header, true)) {
@@ -110,34 +114,16 @@ class ParentStudentImportService
         return $rows;
     }
 
-    private function resolveAcademicYear(School $school): AcademicYear
-    {
-        $year = AcademicYear::query()
-            ->where('school_id', $school->id)
-            ->where('is_current', true)
-            ->first();
-
-        if ($year) {
-            return $year;
-        }
-
-        return AcademicYear::query()->firstOrCreate(
-            ['school_id' => $school->id, 'name' => '2025-26'],
-            [
-                'starts_on' => '2025-06-01',
-                'ends_on' => '2026-03-31',
-                'is_current' => true,
-            ],
-        );
-    }
-
-    private function importRow(School $school, AcademicYear $academicYear, array $row): void
+    private function importRow(School $school, AcademicYear $academicYear, array $row, bool $whatsappConsent): void
     {
         foreach (self::REQUIRED_COLUMNS as $column) {
             if ($row[$column] === '') {
                 throw new InvalidArgumentException("Missing value for {$column}");
             }
         }
+
+        // Validate the phone before creating anything.
+        $phone = $this->phoneNormalizer->normalize($row['parent_phone']);
 
         $class = SchoolClass::query()->firstOrCreate(
             [
@@ -157,37 +143,18 @@ class ParentStudentImportService
             ],
         );
 
-        $admissionNumber = $row['admission_number'] !== ''
-            ? $row['admission_number']
-            : strtoupper($school->code).'-'.now()->format('Y').'-'.str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT);
-
-        $student = Student::query()->updateOrCreate(
-            [
-                'school_id' => $school->id,
-                'admission_number' => $admissionNumber,
-            ],
-            [
-                'name' => $row['student_name'],
-                'school_class_id' => $class->id,
-                'section_id' => $section->id,
-                'status' => 'active',
-            ],
-        );
-
-        $phone = $this->phoneNormalizer->normalize($row['parent_phone']);
-
         $parent = User::query()->firstOrCreate(
             ['phone' => $phone],
             ['name' => $row['parent_name']],
         );
 
+        $student = $this->resolveStudent($school, $class, $section, $parent, $row);
+
         if ($parent->name !== $row['parent_name']) {
             $parent->update(['name' => $row['parent_name']]);
         }
 
-        $parent->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'parent', 'is_active' => true],
-        ]);
+        $parent->assignSchoolRole($school->id, 'parent');
 
         $relationship = $this->normalizeRelationship($row['relationship'] ?? 'guardian');
 
@@ -195,10 +162,64 @@ class ParentStudentImportService
             $student->id => ['relationship' => $relationship, 'is_primary' => true],
         ]);
 
-        WhatsAppOptIn::query()->firstOrCreate(
-            ['user_id' => $parent->id, 'school_id' => $school->id],
-            ['opted_in' => true, 'opted_in_at' => now()],
-        );
+        if ($whatsappConsent) {
+            WhatsAppOptIn::query()->firstOrCreate(
+                ['user_id' => $parent->id, 'school_id' => $school->id],
+                ['opted_in' => true, 'opted_in_at' => now()],
+            );
+        }
+    }
+
+    /**
+     * With an admission number, upsert by it. Without one, reuse the same child already
+     * linked to this parent (so re-importing a sheet does not duplicate students), and
+     * otherwise create a new student with a guaranteed-unique generated number.
+     */
+    private function resolveStudent(School $school, SchoolClass $class, Section $section, User $parent, array $row): Student
+    {
+        $attributes = [
+            'name' => $row['student_name'],
+            'school_class_id' => $class->id,
+            'section_id' => $section->id,
+            'status' => 'active',
+        ];
+
+        $admissionNumber = $row['admission_number'] ?? '';
+
+        if ($admissionNumber !== '') {
+            return Student::query()->updateOrCreate(
+                ['school_id' => $school->id, 'admission_number' => $admissionNumber],
+                $attributes,
+            );
+        }
+
+        $existing = $parent->children()
+            ->where('students.school_id', $school->id)
+            ->where('students.name', $row['student_name'])
+            ->first();
+
+        if ($existing) {
+            $existing->update($attributes);
+
+            return $existing;
+        }
+
+        return Student::query()->create([
+            ...$attributes,
+            'school_id' => $school->id,
+            'admission_number' => $this->generateAdmissionNumber($school),
+        ]);
+    }
+
+    private function generateAdmissionNumber(School $school): string
+    {
+        $prefix = strtoupper($school->code).'-'.now()->format('Y').'-';
+
+        do {
+            $candidate = $prefix.strtoupper(bin2hex(random_bytes(3)));
+        } while (Student::query()->where('school_id', $school->id)->where('admission_number', $candidate)->exists());
+
+        return $candidate;
     }
 
     private function normalizeRelationship(string $value): string

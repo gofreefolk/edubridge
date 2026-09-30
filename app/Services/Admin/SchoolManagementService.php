@@ -229,9 +229,7 @@ class SchoolManagementService
                 $user->update(['name' => $data['name']]);
             }
 
-            $user->schools()->syncWithoutDetaching([
-                $school->id => ['role' => $role, 'is_active' => true],
-            ]);
+            $user->assignSchoolRole($school->id, $role);
 
             if ($role === 'smc_member') {
                 SmcMember::query()->updateOrCreate(
@@ -355,9 +353,7 @@ class SchoolManagementService
                 $parent->update(['name' => $data['name']]);
             }
 
-            $parent->schools()->syncWithoutDetaching([
-                $school->id => ['role' => 'parent', 'is_active' => true],
-            ]);
+            $parent->assignSchoolRole($school->id, 'parent');
 
             if (! empty($data['is_primary'])) {
                 DB::table('parent_student')

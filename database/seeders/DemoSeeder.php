@@ -25,18 +25,14 @@ class DemoSeeder extends Seeder
             ['name' => 'School Admin'],
         );
 
-        $admin->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'school_admin', 'is_active' => true],
-        ]);
+        $admin->assignSchoolRole($school->id, 'school_admin');
 
         $parent = User::query()->firstOrCreate(
             ['phone' => '9123456789'],
             ['name' => 'Anu\'s Parent'],
         );
 
-        $parent->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'parent', 'is_active' => true],
-        ]);
+        $parent->assignSchoolRole($school->id, 'parent');
 
         Notice::query()->updateOrCreate(
             [

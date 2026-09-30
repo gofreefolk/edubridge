@@ -17,8 +17,7 @@ class UpdateNoticeRequest extends FormRequest
             return false;
         }
 
-        return $user->hasAnyRole('super_admin')
-            || $user->roleAtSchool($notice->school_id) === 'school_admin';
+        return $user->hasRoleAtSchool($notice->school_id, 'school_admin');
     }
 
     public function rules(): array

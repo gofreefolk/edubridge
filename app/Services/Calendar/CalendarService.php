@@ -39,10 +39,14 @@ class CalendarService
             'section_id' => $data['section_id'] ?? null,
         ]);
 
-        if ($data['remind_one_day_before'] ?? true) {
+        $startsAt = Carbon::parse($data['starts_at']);
+
+        // No reminder for events already in the past; events less than a day away
+        // are reminded right away instead of at a time that has already gone by.
+        if (($data['remind_one_day_before'] ?? true) && $startsAt->isFuture()) {
             EventReminder::query()->create([
                 'calendar_event_id' => $event->id,
-                'remind_at' => Carbon::parse($data['starts_at'])->subDay(),
+                'remind_at' => $startsAt->copy()->subDay()->max(now()),
                 'channel' => 'whatsapp',
             ]);
         }

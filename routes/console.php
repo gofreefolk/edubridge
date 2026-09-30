@@ -8,5 +8,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('notices:publish-scheduled')->everyMinute();
-Schedule::command('events:send-reminders')->everyMinute();
+// Requires a cron entry: * * * * * php /path/to/current/artisan schedule:run
+Schedule::command('notices:publish-scheduled')->everyMinute()->withoutOverlapping();
+Schedule::command('events:send-reminders')->everyMinute()->withoutOverlapping();

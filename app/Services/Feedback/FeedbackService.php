@@ -8,6 +8,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 class FeedbackService
 {
+    /**
+     * Which role at a school handles each thread direction.
+     */
+    private const HANDLER_ROLE = [
+        'parent_to_teacher' => 'teacher',
+        'parent_to_smc' => 'smc_member',
+    ];
+
     public function inboxQuery(User $user, int $schoolId): Builder
     {
         $query = FeedbackThread::query()
@@ -19,36 +27,41 @@ class FeedbackService
             ])
             ->latest();
 
-        if ($user->hasAnyRole('super_admin') || $user->roleAtSchool($schoolId) === 'school_admin') {
+        if ($user->hasRoleAtSchool($schoolId, 'school_admin')) {
             return $query;
         }
 
-        if ($user->hasAnyRole('teacher') && $user->roleAtSchool($schoolId) === 'teacher') {
-            return $query->where(function (Builder $q) use ($user) {
-                $q->where('direction', 'parent_to_teacher')
-                    ->orWhere('created_by', $user->id)
-                    ->orWhere('assigned_to', $user->id);
-            });
-        }
+        $handledDirections = $this->handledDirections($user, $schoolId);
 
-        return $query->where(function (Builder $q) use ($user) {
+        $childIds = $user->children()->where('students.school_id', $schoolId)->pluck('students.id');
+
+        return $query->where(function (Builder $q) use ($user, $handledDirections, $childIds) {
             $q->where('created_by', $user->id)
                 ->orWhere('assigned_to', $user->id);
+
+            if ($childIds->isNotEmpty()) {
+                $q->orWhere(fn (Builder $staffThread) => $staffThread
+                    ->where('direction', 'teacher_to_parent')
+                    ->whereIn('student_id', $childIds));
+            }
+
+            if ($handledDirections !== []) {
+                $q->orWhereIn('direction', $handledDirections);
+            }
         });
     }
 
     public function canAccess(User $user, FeedbackThread $thread): bool
     {
-        if ($user->hasAnyRole('super_admin')) {
+        if ($user->hasRoleAtSchool($thread->school_id, 'school_admin')) {
             return true;
         }
 
-        if ($user->roleAtSchool($thread->school_id) === 'school_admin') {
+        if (in_array($thread->direction, $this->handledDirections($user, $thread->school_id), true)) {
             return true;
         }
 
-        if ($user->roleAtSchool($thread->school_id) === 'teacher'
-            && $thread->direction === 'parent_to_teacher') {
+        if ($thread->direction === 'teacher_to_parent' && $thread->student_id && $user->isParentOf($thread->student_id)) {
             return true;
         }
 
@@ -57,14 +70,23 @@ class FeedbackService
 
     public function canResolve(User $user, FeedbackThread $thread): bool
     {
-        if ($user->hasAnyRole('super_admin')) {
+        if ($user->hasRoleAtSchool($thread->school_id, 'school_admin')) {
             return true;
         }
 
-        $role = $user->roleAtSchool($thread->school_id);
+        return $thread->created_by === $user->id
+            || in_array($thread->direction, $this->handledDirections($user, $thread->school_id), true);
+    }
 
-        return in_array($role, ['school_admin', 'teacher'], true)
-            || $thread->created_by === $user->id;
+    /** @return list<string> */
+    private function handledDirections(User $user, int $schoolId): array
+    {
+        $roles = $user->rolesAtSchool($schoolId);
+
+        return array_keys(array_filter(
+            self::HANDLER_ROLE,
+            fn (string $role) => in_array($role, $roles, true),
+        ));
     }
 
     public function threadPayload(FeedbackThread $thread): array

@@ -3,7 +3,6 @@
 namespace App\Services\Comms;
 
 use App\Models\FeedbackThread;
-use App\Models\Notice;
 use App\Models\User;
 use App\Models\WhatsAppOptIn;
 use App\Services\Notice\NoticeService;
@@ -16,42 +15,42 @@ class NotificationSummaryService
 
     public function summary(User $user, int $schoolId): array
     {
-        $role = $user->hasAnyRole('super_admin')
-            ? 'school_admin'
-            : ($user->roleAtSchool($schoolId) ?? $user->primaryRole());
+        $isSuperAdmin = $user->isSuperAdmin();
+        $roles = $isSuperAdmin ? ['school_admin'] : $user->rolesAtSchool($schoolId);
 
         $unreadNotices = 0;
         $urgentNotice = null;
         $openMessages = 0;
         $inboxMessages = 0;
 
-        if (in_array($role, ['parent', 'grandparent'], true)) {
-            $notices = $this->noticeService->forParent($user, $schoolId);
-            $unreadNotices = $notices->filter(
-                fn (Notice $notice) => ! $notice->reads()->where('user_id', $user->id)->exists()
-            )->count();
-            $urgent = $notices->firstWhere('priority', 'urgent');
-            if ($urgent && ! $urgent->reads()->where('user_id', $user->id)->exists()) {
+        if (array_intersect($roles, ['parent', 'grandparent'])) {
+            $notices = $this->noticeService->visibleTo($user, $schoolId);
+            $unread = $notices->where('is_read', false);
+            $unreadNotices = $unread->count();
+
+            $urgent = $unread->firstWhere('priority', 'urgent');
+            if ($urgent) {
                 $urgentNotice = [
                     'id' => $urgent->id,
                     'title' => $urgent->title,
                     'magic_link_token' => $urgent->magic_link_token,
                 ];
             }
+
             $openMessages = FeedbackThread::query()
                 ->where('school_id', $schoolId)
-                ->where('created_by', $user->id)
+                ->where(fn ($q) => $q->where('created_by', $user->id)->orWhere('assigned_to', $user->id))
                 ->whereIn('status', ['open', 'acknowledged'])
                 ->count();
         }
 
-        if (in_array($role, ['school_admin', 'teacher'], true) || $user->hasAnyRole('super_admin')) {
+        $isAdmin = in_array('school_admin', $roles, true);
+
+        if ($isAdmin || in_array('teacher', $roles, true)) {
             $inboxMessages = FeedbackThread::query()
                 ->where('school_id', $schoolId)
                 ->whereIn('status', ['open', 'acknowledged'])
-                ->when($role === 'teacher' && ! $user->hasAnyRole('super_admin'), function ($q) use ($user) {
-                    $q->where('direction', 'parent_to_teacher');
-                })
+                ->when(! $isAdmin, fn ($q) => $q->where('direction', 'parent_to_teacher'))
                 ->count();
         }
 

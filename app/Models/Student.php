@@ -15,6 +15,7 @@ class Student extends Model
     protected $fillable = [
         'school_id', 'user_id', 'school_class_id', 'section_id',
         'admission_number', 'name', 'status', 'date_of_birth',
+        'gender', 'blood_group', 'allergies', 'medical_notes', 'address',
     ];
 
     protected function casts(): array
@@ -47,6 +48,11 @@ class Student extends Model
         return $this->belongsToMany(User::class, 'parent_student', 'student_id', 'parent_user_id')
             ->withPivot(['relationship', 'is_primary'])
             ->withTimestamps();
+    }
+
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(StudentContact::class)->orderByDesc('is_emergency')->orderBy('name');
     }
 
     public function routeAssignments(): HasMany

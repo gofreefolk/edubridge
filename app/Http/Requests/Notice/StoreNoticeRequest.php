@@ -21,8 +21,7 @@ class StoreNoticeRequest extends FormRequest
         $user = $this->user();
         $schoolId = (int) $this->input('school_id');
 
-        return $user && $user->hasAnyRole('school_admin', 'super_admin')
-            && ($user->hasAnyRole('super_admin') || $user->roleAtSchool($schoolId) === 'school_admin');
+        return $user !== null && $schoolId > 0 && $user->hasRoleAtSchool($schoolId, 'school_admin');
     }
 
     public function rules(): array

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\TimetableSlot;
+use App\Models\User;
 use App\Http\Requests\Auth\RequestOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Services\Auth\OtpService;
@@ -117,12 +118,23 @@ class OtpAuthController extends Controller
             ] : null,
             'teacher_class_id' => $teacherSlot?->school_class_id,
             'teacher_section_id' => $teacherSlot?->section_id,
-            'schools' => $user->schools->map(fn ($s) => [
-                'id' => $s->id,
-                'name' => $s->name,
-                'code' => $s->code,
-                'role' => $s->pivot->role,
-            ]),
+            // One entry per school; a user may hold several roles at the same school.
+            'schools' => $user->schools
+                ->filter(fn ($s) => (bool) $s->pivot->is_active)
+                ->groupBy('id')
+                ->map(function ($rows) {
+                    $school = $rows->first();
+                    $roles = $rows->pluck('pivot.role')->unique()->values()->all();
+
+                    return [
+                        'id' => $school->id,
+                        'name' => $school->name,
+                        'code' => $school->code,
+                        'role' => User::highestPriorityRole($roles),
+                        'roles' => $roles,
+                    ];
+                })
+                ->values(),
             'children' => $user->children->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->name,

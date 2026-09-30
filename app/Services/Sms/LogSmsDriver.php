@@ -4,7 +4,7 @@ namespace App\Services\Sms;
 
 use Illuminate\Support\Facades\Log;
 
-class LogSmsDriver
+class LogSmsDriver implements SmsDriver
 {
     public function send(string $phone, string $message): void
     {

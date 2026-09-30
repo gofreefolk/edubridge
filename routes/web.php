@@ -18,6 +18,10 @@ use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\Feedback\FeedbackController;
 use App\Http\Controllers\Notice\MagicLinkNoticeController;
 use App\Http\Controllers\Notice\NoticeController;
+use App\Http\Controllers\Operations\AttendanceController;
+use App\Http\Controllers\Operations\CentreLogController;
+use App\Http\Controllers\Operations\ChecklistController;
+use App\Http\Controllers\Operations\StudentProfileController;
 use App\Http\Controllers\Parent\ParentDashboardController;
 use App\Http\Controllers\Smc\SmcController;
 use App\Http\Controllers\Student\StudentPortalController;
@@ -26,10 +30,12 @@ use App\Http\Controllers\Transport\TransportController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api')->group(function () {
-    Route::post('auth/otp/request', [OtpAuthController::class, 'requestOtp']);
-    Route::post('auth/otp/verify', [OtpAuthController::class, 'verifyOtp']);
+    Route::middleware('throttle:otp')->group(function () {
+        Route::post('auth/otp/request', [OtpAuthController::class, 'requestOtp']);
+        Route::post('auth/otp/verify', [OtpAuthController::class, 'verifyOtp']);
+    });
 
-    Route::post('schools/register', [SchoolRegistrationController::class, 'store']);
+    Route::post('schools/register', [SchoolRegistrationController::class, 'store'])->middleware('throttle:registration');
     Route::get('invites/admin/{token}', [SchoolAdminInviteController::class, 'show']);
 
     Route::get('admin/import/sample.csv', [SchoolSetupController::class, 'downloadSample']);
@@ -40,6 +46,26 @@ Route::prefix('api')->group(function () {
         Route::get('notices/magic/{token}', [MagicLinkNoticeController::class, 'show']);
         Route::post('notices/magic/{token}/read', [MagicLinkNoticeController::class, 'markRead']);
         Route::post('invites/admin/{token}/accept', [SchoolAdminInviteController::class, 'accept']);
+
+        // School operations. Per-school / per-student access is checked in each controller.
+        Route::get('students/{student}/profile', [StudentProfileController::class, 'show']);
+        Route::put('students/{student}/profile', [StudentProfileController::class, 'update']);
+        Route::post('students/{student}/contacts', [StudentProfileController::class, 'storeContact']);
+        Route::put('students/{student}/contacts/{contact}', [StudentProfileController::class, 'updateContact']);
+        Route::delete('students/{student}/contacts/{contact}', [StudentProfileController::class, 'destroyContact']);
+
+        Route::get('attendance/sheet', [AttendanceController::class, 'sheet']);
+        Route::get('attendance/report', [AttendanceController::class, 'report']);
+
+        Route::get('centre-logs', [CentreLogController::class, 'index']);
+        Route::post('centre-logs', [CentreLogController::class, 'store']);
+        Route::delete('centre-logs/{log}', [CentreLogController::class, 'destroy']);
+
+        Route::get('checklists', [ChecklistController::class, 'index']);
+        Route::post('checklists', [ChecklistController::class, 'storeTemplate']);
+        Route::put('checklists/{template}', [ChecklistController::class, 'updateTemplate']);
+        Route::post('checklists/{template}/submit', [ChecklistController::class, 'submit']);
+        Route::get('checklists/report', [ChecklistController::class, 'report']);
 
         Route::middleware('role:parent,grandparent,school_admin,teacher,smc_member,student,alumni,super_admin')->group(function () {
             Route::get('notices', [NoticeController::class, 'index']);
@@ -63,7 +89,6 @@ Route::prefix('api')->group(function () {
 
         Route::middleware('role:parent,grandparent')->group(function () {
             Route::get('parent/dashboard', [ParentDashboardController::class, 'show']);
-            Route::get('student/dashboard', [StudentPortalController::class, 'dashboard']);
             Route::get('transport/student', [TransportController::class, 'studentStatus']);
             Route::post('transport/absence', [TransportController::class, 'reportAbsence']);
         });
@@ -122,7 +147,7 @@ Route::prefix('api')->group(function () {
             Route::get('smc/board', [SmcController::class, 'board']);
         });
 
-        Route::middleware('role:student')->group(function () {
+        Route::middleware('role:student,parent,grandparent')->group(function () {
             Route::get('student/dashboard', [StudentPortalController::class, 'dashboard']);
         });
 
@@ -152,5 +177,19 @@ Route::prefix('api')->group(function () {
         });
     });
 });
+
+// PWA files are built into /build but served from the root, so the service worker's
+// scope covers the whole app and its relative manifest entry resolves.
+Route::get('/{file}', function (string $file) {
+    $path = public_path('build/'.$file);
+    abort_unless(is_file($path), 404);
+
+    return response()->file($path, [
+        'Content-Type' => $file === 'sw.js'
+            ? 'application/javascript; charset=utf-8'
+            : 'application/manifest+json',
+        'Cache-Control' => 'no-cache',
+    ]);
+})->whereIn('file', ['sw.js', 'manifest.webmanifest']);
 
 Route::view('/{any?}', 'app')->where('any', '.*');

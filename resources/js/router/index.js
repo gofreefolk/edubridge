@@ -26,6 +26,10 @@ import PlatformSchoolDetailPage from '@/pages/platform/PlatformSchoolDetailPage.
 import PlatformRegistrationsPage from '@/pages/platform/PlatformRegistrationsPage.vue';
 import SchoolRegisterPage from '@/pages/SchoolRegisterPage.vue';
 import AdminInviteAcceptPage from '@/pages/AdminInviteAcceptPage.vue';
+import StudentProfilePage from '@/pages/StudentProfilePage.vue';
+import AttendanceReportPage from '@/pages/AttendanceReportPage.vue';
+import CentreLogPage from '@/pages/CentreLogPage.vue';
+import ChecklistsPage from '@/pages/ChecklistsPage.vue';
 import { useAuth } from '@/composables/useAuth';
 import { useRole } from '@/composables/useRole';
 import { applyUserLocale, setLocale } from '@/i18n';
@@ -69,6 +73,10 @@ const routes = [
     { path: '/admin/classes', name: 'admin-classes', component: AdminClassesPage },
     { path: '/admin/staff', name: 'admin-staff', component: AdminStaffPage },
     { path: '/admin/students', name: 'admin-students', component: AdminStudentsPage },
+    { path: '/students/:id/profile', name: 'student-profile', component: StudentProfilePage, props: true },
+    { path: '/attendance/report', name: 'attendance-report', component: AttendanceReportPage },
+    { path: '/logs', name: 'centre-logs', component: CentreLogPage },
+    { path: '/checklists', name: 'checklists', component: ChecklistsPage },
     { path: '/n/:token', name: 'notice-magic', component: NoticePage, props: true, meta: { hideNav: true } },
 ];
 

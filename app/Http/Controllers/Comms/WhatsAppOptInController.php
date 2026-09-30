@@ -11,35 +11,30 @@ class WhatsAppOptInController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'school_id' => ['required', 'integer', 'exists:schools,id'],
-        ]);
+        $schoolId = $this->authorizedSchoolId($request);
 
-        $record = WhatsAppOptIn::query()->firstOrCreate(
-            [
-                'user_id' => $request->user()->id,
-                'school_id' => $validated['school_id'],
-            ],
-            ['opted_in' => false],
-        );
+        $record = WhatsAppOptIn::query()
+            ->where('user_id', $request->user()->id)
+            ->where('school_id', $schoolId)
+            ->first();
 
         return response()->json([
-            'opted_in' => $record->opted_in,
-            'opted_in_at' => $record->opted_in_at?->toIso8601String(),
+            'opted_in' => $record?->opted_in ?? false,
+            'opted_in_at' => $record?->opted_in_at?->toIso8601String(),
         ]);
     }
 
     public function update(Request $request): JsonResponse
     {
+        $schoolId = $this->authorizedSchoolId($request);
         $validated = $request->validate([
-            'school_id' => ['required', 'integer', 'exists:schools,id'],
             'opted_in' => ['required', 'boolean'],
         ]);
 
         $record = WhatsAppOptIn::query()->updateOrCreate(
             [
                 'user_id' => $request->user()->id,
-                'school_id' => $validated['school_id'],
+                'school_id' => $schoolId,
             ],
             [
                 'opted_in' => $validated['opted_in'],
@@ -51,5 +46,22 @@ class WhatsAppOptInController extends Controller
             'opted_in' => $record->opted_in,
             'opted_in_at' => $record->opted_in_at?->toIso8601String(),
         ]);
+    }
+
+    private function authorizedSchoolId(Request $request): int
+    {
+        $validated = $request->validate([
+            'school_id' => ['required', 'integer', 'exists:schools,id'],
+        ]);
+
+        $schoolId = (int) $validated['school_id'];
+
+        abort_unless(
+            $request->user()->hasRoleAtSchool($schoolId, 'parent', 'grandparent'),
+            403,
+            __('edubridge.unauthorized_role'),
+        );
+
+        return $schoolId;
     }
 }

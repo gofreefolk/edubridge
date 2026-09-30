@@ -72,9 +72,7 @@ class PilotSchoolSeeder extends Seeder
             ['phone' => '9876543210'],
             ['name' => 'School Admin', 'preferred_locale' => 'ml'],
         );
-        $admin->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'school_admin', 'is_active' => true],
-        ]);
+        $admin->assignSchoolRole($school->id, 'school_admin');
 
         $superAdmin = User::query()->firstOrCreate(
             ['phone' => '9900000001'],
@@ -97,17 +95,13 @@ class PilotSchoolSeeder extends Seeder
             ['phone' => '9876501234'],
             ['name' => 'Suma Teacher', 'preferred_locale' => 'ml'],
         );
-        $teacher->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'teacher', 'is_active' => true],
-        ]);
+        $teacher->assignSchoolRole($school->id, 'teacher');
 
         $parent = User::query()->firstOrCreate(
             ['phone' => '9123456789'],
             ['name' => "Anu's Parent", 'preferred_locale' => 'ml', 'large_text_mode' => true],
         );
-        $parent->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'parent', 'is_active' => true],
-        ]);
+        $parent->assignSchoolRole($school->id, 'parent');
 
         WhatsAppOptIn::query()->firstOrCreate(
             ['user_id' => $parent->id, 'school_id' => $school->id],
@@ -203,9 +197,7 @@ class PilotSchoolSeeder extends Seeder
             ['phone' => '9847012345'],
             ['name' => 'Rajesh Kumar', 'preferred_locale' => 'ml'],
         );
-        $smcUser->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'smc_member', 'is_active' => true],
-        ]);
+        $smcUser->assignSchoolRole($school->id, 'smc_member');
 
         SmcMember::query()->firstOrCreate(
             ['school_id' => $school->id, 'name' => 'Rajesh Kumar', 'role' => 'parent_rep'],
@@ -297,9 +289,7 @@ class PilotSchoolSeeder extends Seeder
             ['phone' => '9111222333'],
             ['name' => 'Bus Driver Rajan', 'preferred_locale' => 'ml'],
         );
-        $driver->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'transport_staff', 'is_active' => true],
-        ]);
+        $driver->assignSchoolRole($school->id, 'transport_staff');
         $vehicle->update(['driver_user_id' => $driver->id]);
 
         $route = Route::query()->firstOrCreate(
@@ -321,9 +311,7 @@ class PilotSchoolSeeder extends Seeder
             ['phone' => '9988776655'],
             ['name' => 'Priya Alumni', 'preferred_locale' => 'ml'],
         );
-        $alumniUser->schools()->syncWithoutDetaching([
-            $school->id => ['role' => 'alumni', 'is_active' => true],
-        ]);
+        $alumniUser->assignSchoolRole($school->id, 'alumni');
 
         AlumniProfile::query()->firstOrCreate(
             ['school_id' => $school->id, 'user_id' => $alumniUser->id],

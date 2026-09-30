@@ -20,6 +20,12 @@ class ParentDashboardController extends Controller
             'student_id' => ['nullable', 'exists:students,id'],
         ]);
 
+        abort_unless(
+            $request->user()->hasRoleAtSchool((int) $request->query('school_id'), 'parent', 'grandparent'),
+            403,
+            __('edubridge.unauthorized_role'),
+        );
+
         return response()->json(
             $this->dashboardService->dashboard(
                 $request->user(),

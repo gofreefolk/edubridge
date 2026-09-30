@@ -14,7 +14,7 @@ class SendEventRemindersCommand extends Command
     public function handle(EventReminderService $service): int
     {
         $count = $service->sendDueReminders();
-        $this->info("Sent {$count} event reminder batch(es).");
+        $this->info("Queued {$count} event reminder(s).");
 
         return self::SUCCESS;
     }
