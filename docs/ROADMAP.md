@@ -14,8 +14,8 @@ unaided / CBSE schools and preschools, not only aided LP schools.
 | Events & bulletin board | Notices, calendar, event reminders | Done |
 | 2-way communications | Feedback threads, staff messages, WhatsApp bridge | Done |
 | Parents portal | `ParentDashboardController` / `MyChildPage` | Partial — grows with each phase below |
-| Management reports & dashboard | Per-module reports only | **Phase 1** |
-| Fee management & fee reports | — | **Phase 2** |
+| Management reports & dashboard | `AdminDashboardService` + CSV export | Done (Phase 1) |
+| Fee management & fee reports | `Fees/*` controllers, online payment via Razorpay | Done (Phase 2, 2b) |
 | Check in/out with temperature & health check | Only `can_pickup` flag | **Phase 3** |
 | Enrolment & prospects (no e-form) | CSV import only | **Phase 4** |
 | Student e-portfolio | — | **Phase 5** |
@@ -28,7 +28,8 @@ unaided / CBSE schools and preschools, not only aided LP schools.
 - **Module toggles:** store enabled modules in `schools.settings.modules` (e.g. `{"fees": true}`),
   expose them on `auth/me`, and hide nav entries in `roleNavigation.js` when off. Aided schools
   can then run without fees; preschools can turn on the care tracker.
-- **Migrations:** one migration per phase, continuing the `0001_01_01_0000NN` numbering (next is `000021`).
+- **Migrations:** one migration per phase, continuing the `0001_01_01_0000NN` numbering. Taken so far:
+  `000021` fees, `000022` check-in (Phase 3), `000023` online payment + last seen (Phase 2b / 1). Next is `000024`.
 - **Money:** store amounts as integer paise (`unsignedBigInteger`), never floats.
 - **Notifications:** go through the existing `WhatsAppService` / `SmsService` drivers, queued jobs,
   and `notification_logs` with a new `type` value.
@@ -38,19 +39,23 @@ unaided / CBSE schools and preschools, not only aided LP schools.
 
 ---
 
-## Phase 0 — Ship what is on `dev` (S)
+## Phase 0 — Ship what is on `dev` (S) — code side done
+
+Tests, build and docs are ready on `dev`. The steps below that touch GitHub or the server are
+manual: the go-live checklist is in `docs/PILOT.md`.
 
 1. Open PR `dev` → `main`; let CI run `php artisan test` and the build.
 2. Merge → self-hosted runner deploys. Confirm migration `000020` ran, queue worker and cron are live.
 3. Switch production to `EDUBRIDGE_SMS_DRIVER=http` and the real WhatsApp bridge.
 4. Pilot onboarding per `docs/PILOT.md` (real contacts, CSV import, parent invites).
-5. Update `docs/PILOT.md`: CSV import is no longer "future".
+5. ~~Update `docs/PILOT.md`~~ — done: go-live and onboarding checklists.
 
 ## Phase 1 — Admin dashboard & management reports (S–M) — built
 
 No new tables — aggregates data we already have. Also gives us the pilot adoption metrics.
-Not cached yet (aggregate queries only); add caching if it gets slow on large schools.
-"Parents who logged in" is not tracked (no last-login column), so adoption uses notice reads.
+Cached per school and day (60 s for today, 10 min for past days); the refresh button bypasses it.
+Adoption shows notice readers (the PILOT metric) plus parents who opened the app, ever and in
+the last 7 days (`users.last_seen_at`, set at login and on app open).
 
 **Backend**
 - `App\Services\Admin\AdminDashboardService`.
@@ -78,7 +83,8 @@ Highest commercial value for unaided / CBSE / preschool customers.
 `{SEQ:n}`, `{AY}`, `{YYYY}`, `{YY}`, `{MM}`, `{CODE}`; counter restarts per academic year,
 per calendar year or never; admin can set the next number). No late fees in v1. Online
 payment is Phase 2b; v1 records cash / UPI / bank / cheque at the office.
-Reminder timing is set in `config/edubridge.php` (`fees.*`), not per school yet.
+Reminder timing is per school (Fee setup → WhatsApp reminders; `schools.settings.fee_reminders`),
+falling back to `config/edubridge.php` (`fees.*`). A school can switch reminders off.
 
 **Tables (migration `000021`)**
 - `fee_heads` — school_id, name (Tuition, Bus, PTA, Books…), is_active.
@@ -109,13 +115,29 @@ Reminder timing is set in `config/edubridge.php` (`fees.*`), not per school yet.
 **Parent portal**
 - Fees tab on `MyChildPage`: invoices, balance, receipts (printable HTML / PDF).
 
-**Phase 2b (later):** online payment via Razorpay/UPI — payment link on invoice, webhook
-records `fee_payments` with `method=online`, idempotent on gateway payment id.
+## Phase 2b — Online fee payment (M) — built
+
+**Decided:** each school connects its **own** Razorpay account (keys in Fee setup, secrets
+encrypted), so money goes straight to the school and EduBridge never holds funds.
+
+- Tables (migration `000023`): `fee_gateway_accounts`, `fee_payment_links`;
+  `fee_payments.gateway_payment_id` (unique → idempotent).
+- Parent taps **Pay online** → Razorpay payment link for the current balance (reused while it
+  still matches; no partial payments) → returns to `/fees/pay/return`.
+- Payment recorded from the signed browser return **or** the signed webhook
+  (`/api/webhooks/razorpay/{school}`), whichever comes first; receipt number and WhatsApp
+  receipt as for office payments.
+- Office payment or invoice void cancels open links. A late payment on a voided or already-paid
+  invoice is still recorded (the money is in the school's account) and logged for refund.
+- Office can make a link and share it by WhatsApp from the invoice page; reminders include a
+  pay-online link when the gateway is on.
+
+**Later:** refunds from EduBridge, reconciliation report against Razorpay settlements.
 
 
 ## Phase 3 — Check in / check out (M)
 
-**Table (migration `000022`)**
+**Table (migration `000022`)** — backend in progress, not merged
 - `student_check_events` — school_id, student_id, type (in/out), occurred_at, recorded_by,
   student_contact_id (nullable — who dropped/collected), person_name (when not a listed contact),
   temperature_c decimal(4,1) nullable, health_flags json (fever, cough, rash, injury, other),
@@ -141,7 +163,7 @@ records `fee_payments` with `method=online`, idempotent on gateway payment id.
 
 Excludes online application e-forms, like LittleLives.
 
-**Tables (migration `000023`)**
+**Tables (migration `000024`)**
 - `enquiries` — school_id, academic_year_id, applying_for_class_id, child_name, date_of_birth,
   parent_name, phone, email, source (walk_in/phone/website/referral/other), status
   (new/visit_scheduled/visited/applied/offered/admitted/declined/lost), assigned_to,
@@ -158,7 +180,7 @@ Excludes online application e-forms, like LittleLives.
 
 ## Phase 5 — Student e-portfolio (M–L)
 
-**Tables (migration `000024`)**
+**Tables (migration `000025`)**
 - `portfolio_entries` — school_id, author_id, school_class_id, type
   (observation/work_sample/milestone), title, body, domain (language, numeracy, motor,
   social-emotional, creative, other), observed_on, visible_to_parents, published_at.
@@ -178,7 +200,7 @@ Excludes online application e-forms, like LittleLives.
 
 Behind the `care` module toggle.
 
-**Table (migration `000025`)**
+**Table (migration `000026`)**
 - `care_logs` — school_id, student_id, recorded_by, type (meal/nap/toilet/diaper/fluid/medication),
   occurred_at, data json (e.g. meal: all/most/some/none; nap: start/end), note.
 

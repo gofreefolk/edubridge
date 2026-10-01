@@ -7,7 +7,12 @@
         </div>
 
         <div>
-            <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{{ t('dashboard.today') }}</h2>
+            <div class="mb-2 flex items-center justify-between gap-2">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">{{ t('dashboard.today') }}</h2>
+                <button v-if="summary" type="button" class="text-xs text-blue-800 disabled:opacity-50" :disabled="loading" @click="load(true)">
+                    ↻ {{ t('dashboard.updatedAt', { time: updatedAt }) }}
+                </button>
+            </div>
             <div v-if="loading && !summary" class="text-center text-slate-600">{{ t('common.loading') }}</div>
             <p v-else-if="error" class="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>
 
@@ -73,6 +78,9 @@
                         <p class="text-xs text-slate-500">{{ t('dashboard.adoption') }}</p>
                         <p class="mt-1 text-xs text-slate-600">
                             {{ t('dashboard.adoptionDetail', { readers: summary.adoption.readers, parents: summary.adoption.parents }) }}
+                        </p>
+                        <p class="text-xs text-slate-600">
+                            {{ t('dashboard.adoptionSeen', { seen: summary.adoption.seen, active: summary.adoption.active_recent }) }}
                         </p>
                     </div>
                 </div>
@@ -195,12 +203,19 @@ const summary = ref(null);
 const loading = ref(false);
 const error = ref('');
 
-async function load() {
+const updatedAt = computed(() =>
+    summary.value?.generated_at ? new Date(summary.value.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+);
+
+/** The server caches the summary for a minute; refresh skips the cache. */
+async function load(refresh = false) {
     if (!activeSchoolId.value) return;
     loading.value = true;
     error.value = '';
     try {
-        const { data } = await axios.get('/api/admin/dashboard', { params: { school_id: activeSchoolId.value } });
+        const { data } = await axios.get('/api/admin/dashboard', {
+            params: { school_id: activeSchoolId.value, refresh: refresh ? 1 : undefined },
+        });
         summary.value = data;
     } catch (e) {
         error.value = e.response?.data?.message ?? t('common.error');
@@ -209,6 +224,6 @@ async function load() {
     }
 }
 
-watch(activeSchoolId, load);
-onMounted(load);
+watch(activeSchoolId, () => load());
+onMounted(() => load());
 </script>

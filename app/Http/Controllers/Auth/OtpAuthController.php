@@ -54,6 +54,7 @@ class OtpAuthController extends Controller
 
         Auth::login($user, remember: true);
         $request->session()->regenerate();
+        $this->markSeen($user, force: true);
 
         $user = $user->fresh();
         $this->onboarding->acceptPendingInviteForUser($user);
@@ -66,6 +67,7 @@ class OtpAuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
+        $this->markSeen($user);
         $this->onboarding->acceptPendingInviteForUser($user);
 
         return response()->json([
@@ -82,6 +84,17 @@ class OtpAuthController extends Controller
         return response()->json([
             'message' => 'Logged out.',
         ]);
+    }
+
+    /**
+     * Adoption tracking: logins are rare (remember-me sessions), so the app opening
+     * (auth/me) counts too. Written at most every 15 minutes, without touching updated_at.
+     */
+    private function markSeen(User $user, bool $force = false): void
+    {
+        if ($force || ! $user->last_seen_at || $user->last_seen_at->lt(now()->subMinutes(15))) {
+            User::query()->whereKey($user->id)->toBase()->update(['last_seen_at' => now()]);
+        }
     }
 
     private function userPayload($user): array

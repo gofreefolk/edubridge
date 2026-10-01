@@ -109,6 +109,78 @@
                     <button type="submit" class="w-full rounded-lg border border-blue-300 bg-white py-1.5 text-sm font-semibold text-blue-800">{{ t('common.save') }}</button>
                 </form>
             </div>
+
+            <!-- Reminders -->
+            <form class="space-y-3 rounded-2xl border border-slate-200 bg-white p-4" @submit.prevent="saveReminders">
+                <h2 class="font-semibold text-slate-800">{{ t('fees.remindersTitle') }}</h2>
+                <p class="text-xs text-slate-500">{{ t('fees.remindersHint') }}</p>
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <input v-model="reminders.enabled" type="checkbox" class="h-4 w-4" />
+                    {{ t('fees.remindersEnabled') }}
+                </label>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="text-xs text-slate-600">
+                        {{ t('fees.reminderDaysBefore') }}
+                        <input v-model.number="reminders.reminder_days_before" type="number" min="0" max="60" required class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                    </label>
+                    <label class="text-xs text-slate-600">
+                        {{ t('fees.overdueEveryDays') }}
+                        <input v-model.number="reminders.overdue_every_days" type="number" min="1" max="60" required class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                    </label>
+                    <label class="text-xs text-slate-600">
+                        {{ t('fees.overdueStopAfterDays') }}
+                        <input v-model.number="reminders.overdue_stop_after_days" type="number" min="0" max="365" required class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
+                    </label>
+                </div>
+                <button type="submit" class="w-full rounded-lg border border-blue-300 bg-white py-1.5 text-sm font-semibold text-blue-800">{{ t('common.save') }}</button>
+            </form>
+
+            <!-- Online payment -->
+            <form v-if="gateway" class="space-y-3 rounded-2xl border border-slate-200 bg-white p-4" @submit.prevent="saveGateway">
+                <div class="flex items-center justify-between gap-2">
+                    <h2 class="font-semibold text-slate-800">{{ t('fees.onlineTitle') }}</h2>
+                    <span class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="gateway.is_enabled ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'">
+                        {{ gateway.is_enabled ? t('fees.onlineOn') : t('fees.onlineOff') }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-500">{{ t('fees.onlineHint') }}</p>
+                <label class="block text-xs text-slate-600">
+                    Key ID
+                    <input v-model.trim="gatewayForm.key_id" required placeholder="rzp_live_..." class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 font-mono text-sm" />
+                </label>
+                <label class="block text-xs text-slate-600">
+                    Key Secret
+                    <input
+                        v-model="gatewayForm.key_secret"
+                        type="password"
+                        autocomplete="off"
+                        :placeholder="gateway.has_key_secret ? t('fees.secretSaved') : ''"
+                        class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 font-mono text-sm"
+                    />
+                </label>
+                <div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                    <p>{{ t('fees.webhookSetup') }}</p>
+                    <p class="mt-1 break-all font-mono text-slate-900">{{ gateway.webhook_url }}</p>
+                    <p class="mt-1">{{ t('fees.webhookEvents') }} <span class="font-mono">{{ gateway.webhook_events.join(', ') }}</span></p>
+                </div>
+                <label class="block text-xs text-slate-600">
+                    {{ t('fees.webhookSecret') }}
+                    <input
+                        v-model="gatewayForm.webhook_secret"
+                        type="password"
+                        autocomplete="off"
+                        :placeholder="gateway.has_webhook_secret ? t('fees.secretSaved') : ''"
+                        class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 font-mono text-sm"
+                    />
+                </label>
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <input v-model="gatewayForm.is_enabled" type="checkbox" class="h-4 w-4" />
+                    {{ t('fees.onlineEnable') }}
+                </label>
+                <button type="submit" class="w-full rounded-lg border border-blue-300 bg-white py-1.5 text-sm font-semibold text-blue-800 disabled:opacity-50" :disabled="savingGateway">
+                    {{ savingGateway ? t('fees.checkingKeys') : t('common.save') }}
+                </button>
+            </form>
         </template>
     </section>
 </template>
@@ -131,6 +203,10 @@ const newHead = ref('');
 const structure = reactive({ label: '', feeHeadId: null, classId: null, amount: '', dueOn: '' });
 const numbering = reactive({ invoice: {}, receipt: {} });
 const numberTokens = ['{SEQ:4}', '{AY}', '{YYYY}', '{YY}', '{MM}', '{CODE}'];
+const reminders = reactive({ enabled: true, reminder_days_before: 3, overdue_every_days: 7, overdue_stop_after_days: 60 });
+const gateway = ref(null);
+const gatewayForm = reactive({ key_id: '', key_secret: '', webhook_secret: '', is_enabled: false });
+const savingGateway = ref(false);
 
 const activeHeads = computed(() => setup.value?.heads.filter((h) => h.is_active) ?? []);
 const yearClasses = computed(() => (setup.value?.classes ?? []).filter((c) => !c.academic_year_id || c.academic_year_id === yearId.value));
@@ -165,8 +241,49 @@ async function load() {
         yearId.value = data.academic_year_id;
         Object.assign(numbering.invoice, data.numbering.invoice);
         Object.assign(numbering.receipt, data.numbering.receipt);
+        Object.assign(reminders, data.reminders);
+        await loadGateway();
     } catch (e) {
         fail(e);
+    }
+}
+
+async function loadGateway() {
+    const { data } = await axios.get('/api/fees/gateway', { params: { school_id: activeSchoolId.value } });
+    setGateway(data.gateway);
+}
+
+function setGateway(g) {
+    gateway.value = g;
+    Object.assign(gatewayForm, { key_id: g.key_id ?? '', key_secret: '', webhook_secret: '', is_enabled: g.is_enabled });
+}
+
+async function saveReminders() {
+    try {
+        const { data } = await axios.put('/api/fees/reminders', { school_id: activeSchoolId.value, ...reminders });
+        Object.assign(reminders, data.reminders);
+        done(t('ops.saved'));
+    } catch (e) {
+        fail(e);
+    }
+}
+
+async function saveGateway() {
+    savingGateway.value = true;
+    try {
+        const { data } = await axios.put('/api/fees/gateway', {
+            school_id: activeSchoolId.value,
+            key_id: gatewayForm.key_id,
+            key_secret: gatewayForm.key_secret || undefined,
+            webhook_secret: gatewayForm.webhook_secret || undefined,
+            is_enabled: gatewayForm.is_enabled,
+        });
+        setGateway(data.gateway);
+        done(t('ops.saved'));
+    } catch (e) {
+        fail(e);
+    } finally {
+        savingGateway.value = false;
     }
 }
 

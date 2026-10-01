@@ -36,6 +36,7 @@ import FeeReportsPage from '@/pages/FeeReportsPage.vue';
 import FeeInvoicePage from '@/pages/FeeInvoicePage.vue';
 import FeeReceiptPage from '@/pages/FeeReceiptPage.vue';
 import StudentFeesPage from '@/pages/StudentFeesPage.vue';
+import FeePayReturnPage from '@/pages/FeePayReturnPage.vue';
 import { useAuth } from '@/composables/useAuth';
 import { useRole } from '@/composables/useRole';
 import { applyUserLocale, setLocale } from '@/i18n';
@@ -89,6 +90,8 @@ const routes = [
     { path: '/fees/invoices/:id', name: 'fee-invoice', component: FeeInvoicePage, props: true },
     { path: '/fees/receipts/:id', name: 'fee-receipt', component: FeeReceiptPage, props: true, meta: { hideNav: true } },
     { path: '/students/:id/fees', name: 'student-fees', component: StudentFeesPage, props: true },
+    // Razorpay's return URL; works without login (the payment is verified by signature).
+    { path: '/fees/pay/return', name: 'fee-pay-return', component: FeePayReturnPage, meta: { standalone: true, hideNav: true } },
     { path: '/n/:token', name: 'notice-magic', component: NoticePage, props: true, meta: { hideNav: true } },
 ];
 

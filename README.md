@@ -201,6 +201,23 @@ Each deploy runs `queue:restart`, so the worker picks up new code automatically.
 | `EDUBRIDGE_SMS_WEBHOOK_URL` / `_TOKEN` | Your SMS gateway adapter; receives `{"phone": "+91…", "message": "…"}` |
 | `EDUBRIDGE_WHATSAPP_DRIVER` / `_WEBHOOK_URL` | `http` and your WhatsApp bridge URL |
 | `EDUBRIDGE_OTP_DEV_CODE` | leave empty |
+| `APP_URL` | The public `https://` address. Payment return links, the Razorpay webhook URL and links in fee reminders are built from it |
+| `APP_KEY` | Never rotate once schools have saved Razorpay keys: their secrets are encrypted with it |
+
+### Online fee payment (Razorpay)
+
+Each school uses its own Razorpay account, so fees go straight to the school. The school
+admin sets it up in **Fees → Fee setup → Online payment**:
+
+1. In Razorpay Dashboard → Account & Settings → API Keys, generate keys and paste the Key ID and Key Secret.
+2. In Razorpay Dashboard → Account & Settings → Webhooks, add the webhook URL shown on the
+   setup page (`/api/webhooks/razorpay/{school id}`), pick a secret, and tick
+   `payment_link.paid`, `payment_link.cancelled` and `payment_link.expired`.
+3. Paste the same webhook secret, tick **Let parents pay online** and save. The keys are checked with Razorpay before saving.
+
+Parents then see **Pay online** on their child's fees, and fee reminders include a link.
+Each payment is recorded and receipted automatically, from either the browser return or
+the webhook, and is recorded only once.
 
 Do not run `db:seed` in production: the pilot seeder creates a super admin whose phone number is published in this README (the seeder refuses when `APP_ENV=production`).
 

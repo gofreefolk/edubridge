@@ -30,10 +30,10 @@ class AdminDashboardTest extends TestCase
         $this->admin = User::query()->where('phone', '9876543210')->firstOrFail();
     }
 
-    private function dashboard(?User $as = null)
+    private function dashboard(?User $as = null, bool $refresh = false)
     {
         return $this->actingAs($as ?? $this->admin)
-            ->getJson('/api/admin/dashboard?school_id='.$this->school->id);
+            ->getJson('/api/admin/dashboard?school_id='.$this->school->id.($refresh ? '&refresh=1' : ''));
     }
 
     public function test_summarises_todays_school_activity(): void
@@ -102,9 +102,32 @@ class AdminDashboardTest extends TestCase
         $parent = User::query()->where('phone', '9123456789')->firstOrFail();
         $this->actingAs($parent)->postJson('/api/notices/magic/demo123abc/read')->assertOk();
 
-        $this->dashboard()
+        // Cached for a minute; refresh=1 recomputes.
+        $this->dashboard()->assertJsonPath('adoption.readers', 0);
+        $this->dashboard(refresh: true)
             ->assertJsonPath('adoption.readers', 1)
             ->assertJsonPath('adoption.percent', 100);
+    }
+
+    public function test_adoption_counts_parents_who_opened_the_app(): void
+    {
+        $this->dashboard()
+            ->assertJsonPath('adoption.seen', 0)
+            ->assertJsonPath('adoption.active_recent', 0);
+
+        $parent = User::query()->where('phone', '9123456789')->firstOrFail();
+        $this->actingAs($parent)->getJson('/api/auth/me')->assertOk();
+        $this->assertNotNull($parent->fresh()->last_seen_at);
+
+        $this->dashboard(refresh: true)
+            ->assertJsonPath('adoption.seen', 1)
+            ->assertJsonPath('adoption.active_recent', 1);
+
+        $this->travel(10)->days();
+
+        $this->dashboard(refresh: true)
+            ->assertJsonPath('adoption.seen', 1)
+            ->assertJsonPath('adoption.active_recent', 0);
     }
 
     public function test_only_this_schools_admins_can_view(): void

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\FeeInvoice;
+use App\Services\Fees\OnlineFeePaymentService;
 use App\Services\WhatsApp\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -23,7 +24,7 @@ class SendFeeReminderWhatsApp implements ShouldQueue
         public readonly int $invoiceId,
     ) {}
 
-    public function handle(WhatsAppService $whatsApp): void
+    public function handle(WhatsAppService $whatsApp, OnlineFeePaymentService $online): void
     {
         $invoice = FeeInvoice::query()->with(['school', 'student.parents'])->find($this->invoiceId);
         $school = $invoice?->school;
@@ -40,6 +41,10 @@ class SendFeeReminderWhatsApp implements ShouldQueue
             'invoice' => $invoice->number,
             'due' => $invoice->due_on->format('d M Y'),
         ]);
+
+        if ($online->usableAccount($school->id)) {
+            $message .= ' '.__('edubridge.fee_pay_online', ['url' => url("/students/{$invoice->student_id}/fees")]);
+        }
 
         foreach ($invoice->student->parents as $parent) {
             $whatsApp->sendToUser($parent, $message, 'fee_reminder', $school->id);

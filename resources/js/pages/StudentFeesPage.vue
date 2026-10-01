@@ -20,7 +20,9 @@
                 <p v-if="ledger.totals.overdue_paise" class="mt-2 text-sm font-semibold text-red-700">
                     {{ t('fees.overdueAmount', { amount: formatRupees(ledger.totals.overdue_paise) }) }}
                 </p>
-                <p v-if="!isAdmin && ledger.totals.balance_paise" class="mt-2 text-xs text-slate-500">{{ t('fees.payAtOffice') }}</p>
+                <p v-if="!isAdmin && ledger.totals.balance_paise" class="mt-2 text-xs text-slate-500">
+                    {{ ledger.online_payment ? t('fees.payOnlineHint') : t('fees.payAtOffice') }}
+                </p>
             </div>
 
             <p v-if="!ledger.invoices.length" class="rounded-2xl border border-slate-200 bg-white p-4 text-slate-600">{{ t('fees.noInvoices') }}</p>
@@ -47,6 +49,15 @@
                     <span>{{ t('fees.balance') }}</span>
                     <span :class="inv.balance_paise ? 'text-red-700' : 'text-green-700'">{{ formatRupees(inv.balance_paise) }}</span>
                 </div>
+                <button
+                    v-if="!isAdmin && ledger.online_payment && inv.balance_paise > 0 && inv.status !== 'void'"
+                    type="button"
+                    class="mt-3 w-full rounded-xl bg-blue-700 py-2.5 font-semibold text-white disabled:opacity-50"
+                    :disabled="payingId !== null"
+                    @click="payOnline(inv)"
+                >
+                    {{ payingId === inv.id ? t('fees.openingPayment') : t('fees.payOnline', { amount: formatRupees(inv.balance_paise) }) }}
+                </button>
                 <div v-if="inv.payments.length" class="mt-2 space-y-1">
                     <router-link
                         v-for="p in inv.payments.filter((p) => !p.voided)"
@@ -110,6 +121,7 @@ const concessions = ref([]);
 const heads = ref([]);
 const loading = ref(false);
 const error = ref('');
+const payingId = ref(null);
 const concession = reactive({ feeHeadId: null, type: 'percent', value: '', reason: '' });
 
 const isAdmin = computed(() => ['school_admin', 'super_admin'].includes(activeRole.value));
@@ -132,6 +144,19 @@ async function load() {
         error.value = e.response?.data?.message ?? t('common.error');
     } finally {
         loading.value = false;
+    }
+}
+
+/** Hands over to the Razorpay page; it returns to /fees/pay/return when done. */
+async function payOnline(inv) {
+    payingId.value = inv.id;
+    error.value = '';
+    try {
+        const { data } = await axios.post(`/api/fees/invoices/${inv.id}/pay-link`);
+        window.location.assign(data.url);
+    } catch (e) {
+        error.value = e.response?.data?.message ?? t('common.error');
+        payingId.value = null;
     }
 }
 

@@ -16,26 +16,47 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Services\Notice\NoticeService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
  * One-screen summary of a school's day for the admin home page. Aggregates data the
- * modules already record; every query is scoped to the school.
+ * modules already record; every query is scoped to the school. Cached briefly per
+ * school and day, since every admin opening the app runs all of these aggregates.
  */
 class AdminDashboardService
 {
     private const RECENT_DAYS = 7;
 
+    private const CACHE_SECONDS_TODAY = 60;
+
+    private const CACHE_SECONDS_PAST = 600;
+
     public function __construct(
         private readonly NoticeService $notices,
     ) {}
 
-    public function summary(School $school, ?Carbon $date = null): array
+    public function summary(School $school, ?Carbon $date = null, bool $fresh = false): array
     {
         $date = ($date ?? today())->copy()->startOfDay();
+        $key = "admin-dashboard:{$school->id}:{$date->toDateString()}";
 
+        if ($fresh) {
+            Cache::forget($key);
+        }
+
+        return Cache::remember(
+            $key,
+            $date->isToday() ? self::CACHE_SECONDS_TODAY : self::CACHE_SECONDS_PAST,
+            fn () => $this->build($school, $date),
+        );
+    }
+
+    private function build(School $school, Carbon $date): array
+    {
         return [
             'date' => $date->toDateString(),
+            'generated_at' => now()->toIso8601String(),
             'attendance' => $this->attendance($school, $date),
             'notices' => $this->notices($school, $date),
             'feedback' => $this->feedback($school, $date),
@@ -215,6 +236,7 @@ class AdminDashboardService
 
     /**
      * Pilot adoption metric: share of linked parents who have read at least one notice.
+     * Also how many have ever opened the app, and how many did in the last 7 days.
      */
     private function adoption(School $school): array
     {
@@ -232,9 +254,17 @@ class AdminDashboardService
             ->distinct()
             ->count('notice_reads.user_id');
 
+        $seen = DB::table('users')
+            ->whereIn('id', $parentIds)
+            ->whereNotNull('last_seen_at')
+            ->selectRaw('count(*) as ever, sum(case when last_seen_at >= ? then 1 else 0 end) as recent', [now()->subDays(self::RECENT_DAYS)])
+            ->first();
+
         return [
             'parents' => $parentIds->count(),
             'readers' => $readers,
+            'seen' => (int) $seen->ever,
+            'active_recent' => (int) $seen->recent,
             'percent' => $parentIds->count() > 0 ? round($readers / $parentIds->count() * 100, 1) : null,
         ];
     }

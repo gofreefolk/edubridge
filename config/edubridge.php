@@ -24,6 +24,11 @@ return [
         'reminder_days_before' => (int) env('EDUBRIDGE_FEE_REMINDER_DAYS_BEFORE', 3),
         'overdue_every_days' => (int) env('EDUBRIDGE_FEE_OVERDUE_EVERY_DAYS', 7),
         'overdue_stop_after_days' => (int) env('EDUBRIDGE_FEE_OVERDUE_STOP_AFTER_DAYS', 60),
+        // Above are defaults; each school can override them in Fee setup.
+        'online' => [
+            // Razorpay payment links; keys are per school (Fee setup), paid into the school's account.
+            'link_expiry_hours' => (int) env('EDUBRIDGE_FEE_LINK_EXPIRY_HOURS', 48),
+        ],
     ],
     'attachments' => [
         'disk' => env('EDUBRIDGE_ATTACHMENTS_DISK', 'public'),

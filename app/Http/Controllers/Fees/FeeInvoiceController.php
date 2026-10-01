@@ -11,11 +11,13 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\Fees\FeeService;
+use App\Services\Fees\OnlineFeePaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
+use RuntimeException;
 
 class FeeInvoiceController extends Controller
 {
@@ -23,6 +25,7 @@ class FeeInvoiceController extends Controller
 
     public function __construct(
         private readonly FeeService $fees,
+        private readonly OnlineFeePaymentService $online,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -101,7 +104,31 @@ class FeeInvoiceController extends Controller
     {
         $this->authorizeView($request->user(), $invoice->student);
 
-        return response()->json(['invoice' => $this->detail($invoice)]);
+        return response()->json([
+            'invoice' => $this->detail($invoice),
+            'online_payment' => (bool) $this->online->usableAccount($invoice->school_id),
+        ]);
+    }
+
+    /**
+     * A Razorpay link for the invoice's balance, for a parent to pay now or for the
+     * office to share.
+     */
+    public function payLink(Request $request, FeeInvoice $invoice): JsonResponse
+    {
+        $this->authorizeView($request->user(), $invoice->student);
+
+        try {
+            $link = $this->online->linkFor($invoice, $request->user());
+        } catch (InvalidArgumentException|RuntimeException $e) {
+            return $this->error($e);
+        }
+
+        return response()->json([
+            'url' => $link->short_url,
+            'amount_paise' => $link->amount_paise,
+            'expires_at' => $link->expires_at?->toIso8601String(),
+        ]);
     }
 
     public function void(Request $request, FeeInvoice $invoice): JsonResponse
@@ -213,6 +240,7 @@ class FeeInvoiceController extends Controller
 
         return response()->json([
             'student' => ['id' => $student->id, 'name' => $student->name, 'admission_number' => $student->admission_number],
+            'online_payment' => (bool) $this->online->usableAccount($student->school_id),
             'totals' => [
                 'net_paise' => $live->sum(fn ($i) => $i->netPaise()),
                 'paid_paise' => $live->sum('paid_paise'),
@@ -279,7 +307,7 @@ class FeeInvoiceController extends Controller
         ];
     }
 
-    private function error(InvalidArgumentException $e): JsonResponse
+    private function error(InvalidArgumentException|RuntimeException $e): JsonResponse
     {
         return response()->json(['message' => __('edubridge.'.$e->getMessage())], 422);
     }

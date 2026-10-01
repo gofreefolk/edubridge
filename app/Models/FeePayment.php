@@ -11,7 +11,7 @@ class FeePayment extends Model
 
     protected $fillable = [
         'school_id', 'fee_invoice_id', 'receipt_number', 'amount_paise', 'method', 'reference',
-        'paid_at', 'received_by', 'voided_at', 'voided_by', 'void_reason',
+        'paid_at', 'received_by', 'voided_at', 'voided_by', 'void_reason', 'gateway_payment_id',
     ];
 
     protected function casts(): array

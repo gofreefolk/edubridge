@@ -38,6 +38,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'large_text_mode' => 'boolean',
+            'last_seen_at' => 'datetime',
         ];
     }
 

@@ -2,15 +2,18 @@
 
 namespace App\Services\Fees;
 
+use App\Jobs\CancelFeePaymentLinks;
 use App\Jobs\SendFeeReceiptWhatsApp;
 use App\Models\AcademicYear;
 use App\Models\FeeConcession;
 use App\Models\FeeInvoice;
 use App\Models\FeePayment;
+use App\Models\FeePaymentLink;
 use App\Models\FeeStructure;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -193,8 +196,83 @@ class FeeService
         });
 
         SendFeeReceiptWhatsApp::dispatch($payment->id)->afterCommit();
+        $this->cancelOpenPaymentLinks($invoice);
 
         return $payment;
+    }
+
+    /**
+     * Records money a payment gateway has already taken. Idempotent on the gateway's
+     * payment id, so webhook retries and the browser callback can both call it. Unlike
+     * office payments it never refuses: the money is in the school's account, so an
+     * overpayment or a payment on a voided invoice is recorded for the office to refund.
+     * The paid link is closed in the same transaction so it is never cancelled afterwards.
+     */
+    public function recordGatewayPayment(FeeInvoice $invoice, int $amountPaise, string $gatewayPaymentId, Carbon $paidAt, ?FeePaymentLink $link = null): FeePayment
+    {
+        $existing = FeePayment::query()->where('gateway_payment_id', $gatewayPaymentId)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        try {
+            $payment = DB::transaction(function () use ($invoice, $amountPaise, $gatewayPaymentId, $paidAt, $link) {
+                $invoice = FeeInvoice::query()->with(['school', 'academicYear'])->lockForUpdate()->findOrFail($invoice->id);
+
+                // Re-check under the invoice lock: a concurrent webhook may have just won.
+                $existing = FeePayment::query()->where('gateway_payment_id', $gatewayPaymentId)->first();
+                if ($existing) {
+                    return $existing;
+                }
+
+                if ($invoice->status === 'void' || $amountPaise > $invoice->balancePaise()) {
+                    logger()->warning('Online fee payment needs a refund or review', [
+                        'invoice_id' => $invoice->id,
+                        'gateway_payment_id' => $gatewayPaymentId,
+                        'amount_paise' => $amountPaise,
+                        'balance_paise' => $invoice->balancePaise(),
+                        'invoice_status' => $invoice->status,
+                    ]);
+                }
+
+                $payment = FeePayment::query()->create([
+                    'school_id' => $invoice->school_id,
+                    'fee_invoice_id' => $invoice->id,
+                    'receipt_number' => $this->numbers->allocate($invoice->school, 'receipt', $paidAt, $invoice->academicYear),
+                    'amount_paise' => $amountPaise,
+                    'method' => 'online',
+                    'reference' => $gatewayPaymentId,
+                    'gateway_payment_id' => $gatewayPaymentId,
+                    'paid_at' => $paidAt,
+                    'received_by' => null,
+                ]);
+
+                $link?->update(['status' => 'paid', 'fee_payment_id' => $payment->id]);
+                $this->refreshTotals($invoice);
+                SendFeeReceiptWhatsApp::dispatch($payment->id)->afterCommit();
+
+                return $payment;
+            });
+        } catch (UniqueConstraintViolationException) {
+            return FeePayment::query()->where('gateway_payment_id', $gatewayPaymentId)->firstOrFail();
+        }
+
+        $this->cancelOpenPaymentLinks($invoice);
+
+        return $payment;
+    }
+
+    /**
+     * After the balance changes, open links are for the wrong amount; cancel them so a
+     * parent cannot pay twice. A fresh link is made the next time someone pays online.
+     */
+    public function cancelOpenPaymentLinks(FeeInvoice $invoice): void
+    {
+        $open = FeePaymentLink::query()->where('fee_invoice_id', $invoice->id)->where('status', 'created')->pluck('id');
+
+        if ($open->isNotEmpty()) {
+            CancelFeePaymentLinks::dispatch($open->all())->afterCommit();
+        }
     }
 
     public function voidPayment(FeePayment $payment, string $reason, User $by): FeePayment
@@ -236,6 +314,8 @@ class FeeService
                 'void_reason' => $reason,
             ]);
 
+            $this->cancelOpenPaymentLinks($invoice);
+
             return $invoice;
         });
     }
@@ -247,6 +327,7 @@ class FeeService
         $invoice->update([
             'paid_paise' => $paid,
             'status' => match (true) {
+                $invoice->status === 'void' => 'void', // late online payment on a voided invoice
                 $paid >= $invoice->netPaise() => 'paid',
                 $paid > 0 => 'partially_paid',
                 default => 'issued',

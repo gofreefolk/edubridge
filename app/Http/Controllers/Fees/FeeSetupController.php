@@ -13,6 +13,7 @@ use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Services\Fees\FeeNumberService;
+use App\Services\Fees\FeeReminderSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -28,6 +29,7 @@ class FeeSetupController extends Controller
 
     public function __construct(
         private readonly FeeNumberService $numbers,
+        private readonly FeeReminderSettings $reminders,
     ) {}
 
     public function show(Request $request): JsonResponse
@@ -82,6 +84,7 @@ class FeeSetupController extends Controller
                 'invoice' => $this->numbers->settings($school, 'invoice'),
                 'receipt' => $this->numbers->settings($school, 'receipt'),
             ],
+            'reminders' => $this->reminders->for($school),
         ]);
     }
 
@@ -164,6 +167,22 @@ class FeeSetupController extends Controller
         }
 
         return response()->json(['numbering' => $settings]);
+    }
+
+    public function updateReminders(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'school_id' => ['required', 'integer', 'exists:schools,id'],
+            'enabled' => ['required', 'boolean'],
+            'reminder_days_before' => ['required', 'integer', 'min:0', 'max:60'],
+            'overdue_every_days' => ['required', 'integer', 'min:1', 'max:60'],
+            'overdue_stop_after_days' => ['required', 'integer', 'min:0', 'max:365'],
+        ]);
+
+        $school = $this->schoolForAdmin($request->user(), (int) $data['school_id']);
+        unset($data['school_id']);
+
+        return response()->json(['reminders' => $this->reminders->update($school, $data)]);
     }
 
     public function concessions(Request $request, Student $student): JsonResponse

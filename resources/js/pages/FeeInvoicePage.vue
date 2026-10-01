@@ -73,6 +73,31 @@
                 </button>
             </form>
 
+            <div v-if="isAdmin && onlinePayment && invoice.balance_paise > 0 && invoice.status !== 'void'" class="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">
+                <h2 class="font-semibold text-slate-800">{{ t('fees.shareLinkTitle') }}</h2>
+                <p class="text-xs text-slate-500">{{ t('fees.shareLinkHint') }}</p>
+                <button
+                    v-if="!shareLink"
+                    type="button"
+                    class="w-full rounded-lg border border-blue-300 bg-blue-50 py-2 text-sm font-semibold text-blue-800 disabled:opacity-50"
+                    :disabled="busy"
+                    @click="makeShareLink"
+                >
+                    {{ t('fees.makeLink') }}
+                </button>
+                <template v-else>
+                    <input readonly :value="shareLink.url" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 font-mono text-sm" @focus="$event.target.select()" />
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" class="rounded-lg border border-slate-300 py-2 text-sm font-semibold text-slate-800" @click="copyShareLink">
+                            {{ copied ? t('fees.copied') : t('fees.copyLink') }}
+                        </button>
+                        <a :href="whatsAppShareUrl" target="_blank" rel="noopener" class="rounded-lg border border-green-300 bg-green-50 py-2 text-center text-sm font-semibold text-green-800">
+                            {{ t('fees.shareWhatsApp') }}
+                        </a>
+                    </div>
+                </template>
+            </div>
+
             <div v-if="invoice.payments.length" class="space-y-2">
                 <h2 class="font-semibold text-slate-800">{{ t('fees.payments') }}</h2>
                 <div v-for="p in invoice.payments" :key="p.id" class="rounded-xl border border-slate-200 bg-white p-3 text-sm" :class="p.voided ? 'opacity-60' : ''">
@@ -125,8 +150,21 @@ const loading = ref(false);
 const busy = ref(false);
 const error = ref('');
 const payment = reactive({ amount: '', method: 'cash', reference: '', paidOn: todayIso });
+const onlinePayment = ref(false);
+const shareLink = ref(null);
+const copied = ref(false);
 
 const isAdmin = computed(() => ['school_admin', 'super_admin'].includes(activeRole.value));
+const whatsAppShareUrl = computed(() => {
+    if (!shareLink.value || !invoice.value) return '#';
+    const text = t('fees.shareLinkMessage', {
+        student: invoice.value.student?.name ?? '',
+        label: invoice.value.label,
+        amount: formatRupees(shareLink.value.amount_paise),
+        url: shareLink.value.url,
+    });
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+});
 
 async function load() {
     loading.value = true;
@@ -134,6 +172,8 @@ async function load() {
     try {
         const { data } = await axios.get(`/api/fees/invoices/${props.id}`);
         invoice.value = data.invoice;
+        onlinePayment.value = data.online_payment;
+        shareLink.value = null;
         payment.amount = data.invoice.balance_paise ? paiseToInput(data.invoice.balance_paise) : '';
     } catch (e) {
         error.value = e.response?.data?.message ?? t('common.error');
@@ -164,6 +204,29 @@ async function recordPayment() {
         error.value = e.response?.data?.message ?? t('common.error');
     } finally {
         busy.value = false;
+    }
+}
+
+async function makeShareLink() {
+    busy.value = true;
+    error.value = '';
+    try {
+        const { data } = await axios.post(`/api/fees/invoices/${props.id}/pay-link`);
+        shareLink.value = data;
+    } catch (e) {
+        error.value = e.response?.data?.message ?? t('common.error');
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function copyShareLink() {
+    try {
+        await navigator.clipboard.writeText(shareLink.value.url);
+        copied.value = true;
+        setTimeout(() => (copied.value = false), 2000);
+    } catch {
+        // Clipboard blocked (http / old browser): the field is selectable instead.
     }
 }
 

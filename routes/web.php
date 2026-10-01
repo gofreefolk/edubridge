@@ -18,6 +18,7 @@ use App\Http\Controllers\Comms\WhatsAppOptInController;
 use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\Feedback\FeedbackController;
 use App\Http\Controllers\Fees\FeeInvoiceController;
+use App\Http\Controllers\Fees\FeeOnlinePaymentController;
 use App\Http\Controllers\Fees\FeeReportController;
 use App\Http\Controllers\Fees\FeeSetupController;
 use App\Http\Controllers\Notice\MagicLinkNoticeController;
@@ -43,6 +44,10 @@ Route::prefix('api')->group(function () {
     Route::get('invites/admin/{token}', [SchoolAdminInviteController::class, 'show']);
 
     Route::get('admin/import/sample.csv', [SchoolSetupController::class, 'downloadSample']);
+
+    // Online fee payment: signed by Razorpay, so no login (and no CSRF for the webhook).
+    Route::post('fees/online/confirm', [FeeOnlinePaymentController::class, 'confirm'])->middleware('throttle:30,1');
+    Route::post('webhooks/razorpay/{school}', [FeeOnlinePaymentController::class, 'webhook'])->middleware('throttle:120,1');
 
     Route::middleware('auth')->group(function () {
         Route::get('auth/me', [OtpAuthController::class, 'me']);
@@ -75,6 +80,7 @@ Route::prefix('api')->group(function () {
         Route::get('fees/students/{student}', [FeeInvoiceController::class, 'ledger']);
         Route::get('fees/invoices/{invoice}', [FeeInvoiceController::class, 'show']);
         Route::get('fees/payments/{payment}/receipt', [FeeInvoiceController::class, 'receipt']);
+        Route::post('fees/invoices/{invoice}/pay-link', [FeeInvoiceController::class, 'payLink'])->middleware('throttle:20,1');
 
         Route::middleware('role:parent,grandparent,school_admin,teacher,smc_member,student,alumni,super_admin')->group(function () {
             Route::get('notices', [NoticeController::class, 'index']);
@@ -142,6 +148,9 @@ Route::prefix('api')->group(function () {
             Route::put('fees/structures/{structure}', [FeeSetupController::class, 'updateStructure']);
             Route::delete('fees/structures/{structure}', [FeeSetupController::class, 'destroyStructure']);
             Route::put('fees/numbering', [FeeSetupController::class, 'updateNumbering']);
+            Route::put('fees/reminders', [FeeSetupController::class, 'updateReminders']);
+            Route::get('fees/gateway', [FeeOnlinePaymentController::class, 'gateway']);
+            Route::put('fees/gateway', [FeeOnlinePaymentController::class, 'updateGateway']);
             Route::get('fees/students/{student}/concessions', [FeeSetupController::class, 'concessions']);
             Route::post('fees/students/{student}/concessions', [FeeSetupController::class, 'storeConcession']);
             Route::delete('fees/students/{student}/concessions/{concession}', [FeeSetupController::class, 'destroyConcession']);

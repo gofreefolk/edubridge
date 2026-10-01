@@ -22,12 +22,13 @@ class AdminDashboardController extends Controller
         $data = $request->validate([
             'school_id' => ['required', 'integer', 'exists:schools,id'],
             'date' => ['nullable', 'date', 'before_or_equal:today'],
+            'refresh' => ['nullable', 'boolean'],
         ]);
 
         $school = $this->schoolForAdmin($request->user(), (int) $data['school_id']);
 
         return response()->json(
-            $this->dashboard->summary($school, isset($data['date']) ? Carbon::parse($data['date']) : null)
+            $this->dashboard->summary($school, isset($data['date']) ? Carbon::parse($data['date']) : null, (bool) ($data['refresh'] ?? false))
         );
     }
 }
